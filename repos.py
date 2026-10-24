@@ -84,7 +84,8 @@ def write_candidate(text):
                          capture_output=True, text=True)
     if res.returncode != 0:
         os.unlink(path)
-        return None, (res.stderr or res.stdout).strip() or "pacman-conf rejected the file"
+        msg = (res.stderr or res.stdout).strip() or "pacman-conf rejected the file"
+        return None, msg.replace(path, "pacman.conf")
     return path, ""
 
 
@@ -190,3 +191,53 @@ class RepoEditor(QObject):
             return ""
         self._set_error("")
         return save_script(path, keys)
+
+    @Slot(result=str)
+    def rawText(self):
+        with open(PACMAN_CONF) as f:
+            return f.read()
+
+    @Slot(str, result=str)
+    def prepareRaw(self, text):
+        """Text mode: validate the whole file with pacman-conf, no key import."""
+        path, err = write_candidate(text if text.endswith("\n") else text + "\n")
+        self._set_error(err)
+        return save_script(path, []) if path else ""
+
+
+MIRRORLISTS = [  # (rate-mirrors target, file)
+    ("arch", "/etc/pacman.d/mirrorlist"),
+    ("chaotic-aur", "/etc/pacman.d/chaotic-mirrorlist"),
+    ("cachyos", "/etc/pacman.d/cachyos-mirrorlist"),
+]
+CACHYOS_VARIANTS = ["v3", "v4"]  # derived from cachyos-mirrorlist via $arch_vN
+
+
+def mirrors_script():
+    """Root script: rank mirrors per list; a list is only replaced when the
+    new one contains servers. Old list kept as <file>.garuda-pilot.bak."""
+    lines = ['replace() { cp -a "$2" "$2.garuda-pilot.bak"; install -m644 "$1" "$2"; '
+             'echo "   $(grep -c \'^Server\' "$2") mirrors -> $2"; }']
+    for target, path in MIRRORLISTS:
+        if not os.path.isfile(path):
+            continue
+        lines += [
+            f"echo '--> {target}'",
+            "tmp=$(mktemp)",
+            f"if rate-mirrors --allow-root --save=\"$tmp\" {target} >/dev/null "
+            f"&& grep -q '^Server' \"$tmp\"; then replace \"$tmp\" {path}; "
+            "else echo '   failed, old list kept'; fi",
+            'rm -f "$tmp"',
+        ]
+    base = "/etc/pacman.d/cachyos-mirrorlist"
+    for v in CACHYOS_VARIANTS:
+        path = f"/etc/pacman.d/cachyos-{v}-mirrorlist"
+        if os.path.isfile(base) and os.path.isfile(path):
+            lines += [
+                f"echo '--> cachyos-{v}'",
+                "tmp=$(mktemp)",
+                f"sed 's|/\\$arch/|/$arch_{v}/|' {base} > \"$tmp\"",
+                f"replace \"$tmp\" {path}",
+                'rm -f "$tmp"',
+            ]
+    return "\n".join(lines)

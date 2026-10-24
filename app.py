@@ -12,7 +12,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
-from repos import RepoEditor
+from repos import RepoEditor, mirrors_script
 from runner import Runner
 from settings import Settings
 
@@ -119,6 +119,12 @@ class Actions(QObject):
     def _repos_save(self):
         return self.runner.start(self._repo_script, as_root=True, display="Save pacman.conf")
 
+    def _mirrors(self):
+        if not shutil.which("rate-mirrors"):
+            self.runner.lineAdded.emit("rate-mirrors is not installed, skipped.")
+            return False
+        return self.runner.start(mirrors_script(), as_root=True, display="Rank mirrors (rate-mirrors)")
+
     STEPS = {
         "update": ("System update", "_update"),
         "aur": ("AUR update", "_aur"),
@@ -126,6 +132,7 @@ class Actions(QObject):
         "cache_aur": ("Clean AUR cache", "_cache_aur"),
         "fix": ("Garuda fix", "_fix"),
         "repos_save": ("Save repositories", "_repos_save"),
+        "mirrors": ("Rank mirrors", "_mirrors"),
     }
 
     def _run(self, keys):
@@ -168,6 +175,10 @@ class Actions(QObject):
         """Install the new pacman.conf, then run a full update (no partial -Sy)."""
         self._repo_script = script
         self._run(["repos_save", "update"])
+
+    @Slot()
+    def mirrors(self):
+        self._run(["mirrors"])
 
     @Slot()
     def fix(self):

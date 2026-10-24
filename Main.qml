@@ -79,6 +79,35 @@ ApplicationWindow {
         radius: 14
     }
 
+    component Segmented: TabBar {
+        id: seg
+        property var options: []
+        background: Rectangle { radius: 9; color: win.dark ? "#2c2c2e" : "#e3e3e8" }
+        Repeater {
+            model: seg.options
+            TabButton {
+                id: tb
+                required property string modelData
+                text: modelData
+                width: implicitWidth + 16
+                contentItem: Text {
+                    text: tb.text
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    color: win.text
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 2
+                    radius: 7
+                    color: tb.checked ? (win.dark ? "#636366" : "#ffffff") : "transparent"
+                }
+            }
+        }
+    }
+
     component ActionCard: Card {
         id: ac
         property string title
@@ -131,32 +160,9 @@ ApplicationWindow {
                 color: win.text
                 Layout.fillWidth: true
             }
-            TabBar {
+            Segmented {
                 id: tabs
-                background: Rectangle { radius: 9; color: win.dark ? "#2c2c2e" : "#e3e3e8" }
-                Repeater {
-                    model: ["Maintenance", "Repositories", "Settings"]
-                    TabButton {
-                        id: tb
-                        required property string modelData
-                        text: modelData
-                        width: implicitWidth + 16
-                        contentItem: Text {
-                            text: tb.text
-                            font.pixelSize: 13
-                            font.weight: Font.DemiBold
-                            color: win.text
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                        background: Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 2
-                            radius: 7
-                            color: tb.checked ? (win.dark ? "#636366" : "#ffffff") : "transparent"
-                        }
-                    }
-                }
+                options: ["Maintenance", "Repositories", "Settings"]
             }
         }
     }
@@ -330,11 +336,16 @@ ApplicationWindow {
             objectName: "repoPage"
             spacing: 12
             property bool dirty: false
+            property bool loading: false
+            readonly property bool textMode: modeSwitch.currentIndex === 1
 
             function reload() {
+                loading = true
                 repoModel.clear()
                 for (const r of repoEditor.load())
                     repoModel.append(r)
+                rawEdit.text = repoEditor.rawText()
+                loading = false
                 dirty = false
             }
             function items() {
@@ -359,14 +370,27 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Label {
-                    text: repoPage.dirty ? "Unsaved changes" : "Top repositories take precedence. Drag ≡ to reorder."
-                    color: repoPage.dirty ? win.accent : win.subtext
-                    font.pixelSize: 13
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
+                Segmented {
+                    id: modeSwitch
+                    options: ["List", "Text"]
+                    enabled: !repoPage.dirty
                 }
-                PillButton { text: "Add"; filled: false; onClicked: addPopup.open() }
+                Item { Layout.fillWidth: true }
+                PillButton {
+                    text: "Rank mirrors"
+                    filled: false
+                    enabled: !actions.step
+                    onClicked: {
+                        tabs.currentIndex = 0
+                        win.begin(actions.mirrors)
+                    }
+                }
+                PillButton {
+                    text: "Add"
+                    filled: false
+                    visible: !repoPage.textMode
+                    onClicked: addPopup.open()
+                }
                 PillButton {
                     text: "Revert"
                     filled: false
@@ -378,13 +402,24 @@ ApplicationWindow {
                     text: "Save & update"
                     enabled: repoPage.dirty && !actions.step
                     onClicked: {
-                        const script = repoEditor.prepare(repoPage.items())
+                        const script = repoPage.textMode ? repoEditor.prepareRaw(rawEdit.text)
+                                                         : repoEditor.prepare(repoPage.items())
                         if (!script)
                             return
                         tabs.currentIndex = 0
                         win.begin(() => actions.saveRepos(script))
                     }
                 }
+            }
+
+            Label {
+                text: repoPage.dirty ? "Unsaved changes"
+                    : repoPage.textMode ? "Edit /etc/pacman.conf directly. Checked with pacman-conf before saving."
+                    : "Top repositories take precedence. Drag ≡ to reorder."
+                color: repoPage.dirty ? win.accent : win.subtext
+                font.pixelSize: 13
+                Layout.fillWidth: true
+                elide: Text.ElideRight
             }
 
             Label {
@@ -396,103 +431,124 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
 
-            ListView {
-                id: repoList
+            StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true
-                spacing: 8
-                model: repoModel
-                moveDisplaced: Transition { NumberAnimation { properties: "y"; duration: 150 } }
+                currentIndex: repoPage.textMode ? 1 : 0
 
-                delegate: Card {
-                    id: row
-                    required property int index
-                    required property string name
-                    required property bool active
-                    required property string siglevel
-                    required property string source
-                    required property string key
-                    width: repoList.width
-                    height: 60
-                    opacity: active ? 1 : 0.55
+                ListView {
+                    id: repoList
+                    clip: true
+                    spacing: 8
+                    model: repoModel
+                    moveDisplaced: Transition { NumberAnimation { properties: "y"; duration: 150 } }
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 14
-                        spacing: 10
+                    delegate: Card {
+                        id: row
+                        required property int index
+                        required property string name
+                        required property bool active
+                        required property string siglevel
+                        required property string source
+                        required property string key
+                        width: repoList.width
+                        height: 60
+                        opacity: active ? 1 : 0.55
 
-                        Label {
-                            text: "≡"
-                            font.pixelSize: 22
-                            color: win.subtext
-                            Layout.preferredWidth: 28
-                            horizontalAlignment: Text.AlignHCenter
-                            MouseArea {
-                                anchors.fill: parent
-                                anchors.margins: -8
-                                cursorShape: Qt.SizeVerCursor
-                                preventStealing: true
-                                onPositionChanged: (mouse) => {
-                                    const p = mapToItem(repoList.contentItem, mouse.x, mouse.y)
-                                    const to = repoList.indexAt(10, p.y)
-                                    if (to >= 0 && to !== row.index) {
-                                        repoModel.move(row.index, to, 1)
-                                        repoPage.dirty = true
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 14
+                            spacing: 10
+
+                            Label {
+                                text: "≡"
+                                font.pixelSize: 22
+                                color: win.subtext
+                                Layout.preferredWidth: 28
+                                horizontalAlignment: Text.AlignHCenter
+                                MouseArea {
+                                    anchors.fill: parent
+                                    anchors.margins: -8
+                                    cursorShape: Qt.SizeVerCursor
+                                    preventStealing: true
+                                    onPositionChanged: (mouse) => {
+                                        const p = mapToItem(repoList.contentItem, mouse.x, mouse.y)
+                                        const to = repoList.indexAt(10, p.y)
+                                        if (to >= 0 && to !== row.index) {
+                                            repoModel.move(row.index, to, 1)
+                                            repoPage.dirty = true
+                                        }
                                     }
                                 }
                             }
-                        }
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
-                            Label {
-                                text: row.name + (row.key ? "  · key " + row.key : "")
-                                font.pixelSize: 15
-                                font.weight: Font.DemiBold
-                                color: win.text
-                            }
-                            Label {
-                                text: row.source
-                                font.family: "monospace"
-                                font.pixelSize: 11
-                                color: win.subtext
-                                elide: Text.ElideRight
+                            ColumnLayout {
                                 Layout.fillWidth: true
+                                spacing: 2
+                                Label {
+                                    text: row.name + (row.key ? "  · key " + row.key : "")
+                                    font.pixelSize: 15
+                                    font.weight: Font.DemiBold
+                                    color: win.text
+                                }
+                                Label {
+                                    text: row.source
+                                    font.family: "monospace"
+                                    font.pixelSize: 11
+                                    color: win.subtext
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                            }
+                            ComboBox {
+                                id: sig
+                                readonly property var levels: {
+                                    const l = repoEditor.sigLevels()
+                                    return l.indexOf(row.siglevel) < 0 ? l.concat([row.siglevel]) : l
+                                }
+                                model: levels.map(v => v || "Default SigLevel")
+                                currentIndex: levels.indexOf(row.siglevel)
+                                Layout.preferredWidth: 210
+                                onActivated: (i) => {
+                                    repoModel.setProperty(row.index, "siglevel", levels[i])
+                                    repoPage.dirty = true
+                                }
+                            }
+                            Switch {
+                                checked: row.active
+                                onToggled: {
+                                    repoModel.setProperty(row.index, "active", checked)
+                                    repoPage.dirty = true
+                                }
+                            }
+                            PillButton {
+                                text: "✕"
+                                filled: false
+                                tint: win.danger
+                                leftPadding: 14
+                                rightPadding: 14
+                                onClicked: {
+                                    repoModel.remove(row.index)
+                                    repoPage.dirty = true
+                                }
                             }
                         }
-                        ComboBox {
-                            id: sig
-                            readonly property var levels: {
-                                const l = repoEditor.sigLevels()
-                                return l.indexOf(row.siglevel) < 0 ? l.concat([row.siglevel]) : l
-                            }
-                            model: levels.map(v => v || "Default SigLevel")
-                            currentIndex: levels.indexOf(row.siglevel)
-                            Layout.preferredWidth: 210
-                            onActivated: (i) => {
-                                repoModel.setProperty(row.index, "siglevel", levels[i])
-                                repoPage.dirty = true
-                            }
-                        }
-                        Switch {
-                            checked: row.active
-                            onToggled: {
-                                repoModel.setProperty(row.index, "active", checked)
-                                repoPage.dirty = true
-                            }
-                        }
-                        PillButton {
-                            text: "✕"
-                            filled: false
-                            tint: win.danger
-                            leftPadding: 14
-                            rightPadding: 14
-                            onClicked: {
-                                repoModel.remove(row.index)
-                                repoPage.dirty = true
-                            }
+                    }
+                }
+
+                Card {
+                    ScrollView {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        TextArea {
+                            id: rawEdit
+                            textFormat: TextEdit.PlainText
+                            font.family: "monospace"
+                            font.pixelSize: 12
+                            color: win.text
+                            selectByMouse: true
+                            background: null
+                            onTextChanged: if (!repoPage.loading) repoPage.dirty = true
                         }
                     }
                 }
