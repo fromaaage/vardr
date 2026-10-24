@@ -46,6 +46,10 @@ class Settings(QObject):
         os.replace(tmp, PATH)
         self.changed.emit()
 
+    @Slot(str, result=bool)
+    def isDefault(self, key):
+        return self.get(key) == DEFAULTS.get(key)
+
     @Slot(str)
     def reset(self, key):
         self.set(key, DEFAULTS[key])

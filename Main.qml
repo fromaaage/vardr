@@ -237,7 +237,7 @@ ApplicationWindow {
                 }
                 ActionCard {
                     title: "Garuda fix"
-                    detail: (win.rev, settings.get("fix_command"))
+                    detail: (win.rev, settings.isDefault("fix_command")) ? "garuda-health --fix → limine-update" : settings.get("fix_command")
                     button: "Run"
                     onTriggered: win.begin(actions.fix)
                 }
