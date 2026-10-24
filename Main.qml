@@ -327,6 +327,7 @@ ApplicationWindow {
         // ---------------- Repositories ----------------
         ColumnLayout {
             id: repoPage
+            objectName: "repoPage"
             spacing: 12
             property bool dirty: false
 
@@ -338,8 +339,12 @@ ApplicationWindow {
             }
             function items() {
                 const out = []
-                for (let i = 0; i < repoModel.count; i++)
-                    out.push(repoModel.get(i))
+                // Plain objects: ListModel items do not cross over to Python
+                for (let i = 0; i < repoModel.count; i++) {
+                    const e = repoModel.get(i)
+                    out.push({ name: e.name, active: e.active, siglevel: e.siglevel, key: e.key,
+                               source: e.source, directives: e.directives, leading: e.leading })
+                }
                 return out
             }
 
