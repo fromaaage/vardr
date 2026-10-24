@@ -10,7 +10,7 @@ import termios
 from PySide6.QtCore import QObject, QSocketNotifier, Property, Signal, Slot
 
 CSI = re.compile(r"\x1b\[([0-9;?]*)([A-Za-z])")
-OSC = re.compile(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)")
+OSC = re.compile(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()][0-9A-Za-z]|\x0f|\x0e")
 # Unfinished line that waits for an answer: "[Y/n]", "? ", "): ", "==> "
 PROMPT = re.compile(r"(\[[yYnN]/[yYnN]\]|\?|:|==>)\s*$")
 
@@ -98,8 +98,9 @@ class Runner(QObject):
     running = Property(bool, _get_running, notify=runningChanged)
 
     # --- control --------------------------------------------------------
-    def start(self, command, as_root=False, env=None):
-        """Run `command` through bash. as_root wraps it in pkexec."""
+    def start(self, command, as_root=False, env=None, display=None):
+        """Run `command` through bash. as_root wraps it in pkexec.
+        `display` replaces the command in the log header."""
         if self._proc:
             return False
         argv = ["/bin/bash", "-c", command]
@@ -108,7 +109,7 @@ class Runner(QObject):
         master, slave = pty.openpty()
         full_env = dict(os.environ, TERM="xterm-256color", COLUMNS="110", LINES="40")
         full_env.update(env or {})
-        self.lineAdded.emit(f'<span style="color:#8e8e93;">$ {html.escape(command)}</span>')
+        self.lineAdded.emit(f'<span style="color:#8e8e93;">$ {html.escape(display or command)}</span>')
         try:
             self._proc = subprocess.Popen(
                 argv, stdin=slave, stdout=slave, stderr=slave,

@@ -104,13 +104,22 @@ class Actions(QObject):
         roots = " ".join(shlex.quote(os.path.expanduser(r)) for r in ("~/.cache/paru", "~/.cache/yay")
                          if os.path.isdir(os.path.expanduser(r)))
         return self.runner.start(
-            f"paccache -rk{k} {cdirs}; paccache -ruk0 {cdirs}; echo; du -sh {roots}")
+            f"paccache -rk{k} {cdirs}; paccache -ruk0 {cdirs}; echo; du -sh {roots}",
+            display=f"paccache -rk{k}; paccache -ruk0  ({len(dirs)} AUR build dirs)")
+
+    def _fix(self):
+        cmd = self.settings.get("fix_command").strip()
+        if not cmd:
+            self.runner.lineAdded.emit("No fix command set, skipped.")
+            return False
+        return self.runner.start(cmd, as_root=bool(self.settings.get("fix_as_root")))
 
     STEPS = {
         "update": ("System update", "_update"),
         "aur": ("AUR update", "_aur"),
         "cache_pacman": ("Clean pacman cache", "_cache_pacman"),
         "cache_aur": ("Clean AUR cache", "_cache_aur"),
+        "fix": ("Garuda fix", "_fix"),
     }
 
     def _run(self, keys):
@@ -147,6 +156,10 @@ class Actions(QObject):
     @Slot()
     def aur(self):
         self._run(["aur"])
+
+    @Slot()
+    def fix(self):
+        self._run(["fix"])
 
     @Slot()
     def cleanCache(self):

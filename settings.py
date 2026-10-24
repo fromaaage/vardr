@@ -13,6 +13,8 @@ DEFAULTS = {
     "update_as_root": True,
     "aur_helper": "auto",
     "cache_keep": 2,
+    "fix_command": "garuda-health --fix; if command -v limine-update >/dev/null; then limine-update; fi",
+    "fix_as_root": True,
 }
 
 

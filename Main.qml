@@ -212,9 +212,11 @@ ApplicationWindow {
                 }
             }
 
-            RowLayout {
+            GridLayout {
                 Layout.fillWidth: true
-                spacing: 16
+                columns: 2
+                columnSpacing: 16
+                rowSpacing: 16
                 ActionCard {
                     title: "System update"
                     detail: (win.rev, settings.get("update_command"))
@@ -232,6 +234,12 @@ ApplicationWindow {
                     detail: "keep " + (win.rev, settings.get("cache_keep")) + " versions"
                     button: "Clean"
                     onTriggered: win.begin(actions.cleanCache)
+                }
+                ActionCard {
+                    title: "Garuda fix"
+                    detail: (win.rev, settings.get("fix_command"))
+                    button: "Run"
+                    onTriggered: win.begin(actions.fix)
                 }
             }
 
@@ -316,128 +324,178 @@ ApplicationWindow {
         }
 
         // ---------------- Settings ----------------
-        ColumnLayout {
-            spacing: 8
-            Label {
-                text: "UPDATE COMMAND"
-                font.pixelSize: 12
-                color: win.subtext
-                leftPadding: 16
-            }
-            Card {
-                Layout.fillWidth: true
-                implicitHeight: col.implicitHeight + 28
-                ColumnLayout {
-                    id: col
-                    anchors.fill: parent
-                    anchors.margins: 14
-                    spacing: 12
-                    TextField {
-                        id: cmd
-                        Layout.fillWidth: true
-                        text: settings.get("update_command")
-                        font.family: "monospace"
-                        color: win.text
-                        background: Rectangle { radius: 8; color: win.dark ? "#2c2c2e" : "#e9e9ee" }
-                        onEditingFinished: settings.set("update_command", text)
+        ScrollView {
+            id: settingsScroll
+            contentWidth: availableWidth
+            ColumnLayout {
+                width: settingsScroll.availableWidth
+                spacing: 8
+                Label {
+                    text: "UPDATE COMMAND"
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                }
+                Card {
+                    Layout.fillWidth: true
+                    implicitHeight: col.implicitHeight + 28
+                    ColumnLayout {
+                        id: col
+                        anchors.fill: parent
+                        anchors.margins: 14
+                        spacing: 12
+                        TextField {
+                            id: cmd
+                            Layout.fillWidth: true
+                            text: settings.get("update_command")
+                            font.family: "monospace"
+                            color: win.text
+                            background: Rectangle { radius: 8; color: win.dark ? "#2c2c2e" : "#e9e9ee" }
+                            onEditingFinished: settings.set("update_command", text)
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Run as root (password dialog)"
+                                color: win.text
+                                font.pixelSize: 15
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                checked: settings.get("update_as_root")
+                                onToggled: settings.set("update_as_root", checked)
+                            }
+                        }
+                        PillButton {
+                            text: "Reset to garuda-update"
+                            filled: false
+                            onClicked: { settings.reset("update_command"); cmd.text = settings.get("update_command") }
+                        }
                     }
+                }
+                Label {
+                    text: "Runs through bash, so pipes and && work. With the root switch on, leave out sudo (e.g. pacman -Syu)."
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    text: "FIX COMMAND"
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                    Layout.topMargin: 16
+                }
+                Card {
+                    Layout.fillWidth: true
+                    implicitHeight: fixCol.implicitHeight + 28
+                    ColumnLayout {
+                        id: fixCol
+                        anchors.fill: parent
+                        anchors.margins: 14
+                        spacing: 12
+                        TextField {
+                            id: fixCmd
+                            Layout.fillWidth: true
+                            text: settings.get("fix_command")
+                            font.family: "monospace"
+                            color: win.text
+                            background: Rectangle { radius: 8; color: win.dark ? "#2c2c2e" : "#e9e9ee" }
+                            onEditingFinished: settings.set("fix_command", text)
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Run as root (password dialog)"
+                                color: win.text
+                                font.pixelSize: 15
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                checked: settings.get("fix_as_root")
+                                onToggled: settings.set("fix_as_root", checked)
+                            }
+                        }
+                        PillButton {
+                            text: "Reset to default"
+                            filled: false
+                            onClicked: { settings.reset("fix_command"); fixCmd.text = settings.get("fix_command") }
+                        }
+                    }
+                }
+
+                Label {
+                    text: "AUR HELPER"
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                    Layout.topMargin: 16
+                }
+                Card {
+                    Layout.fillWidth: true
+                    implicitHeight: 56
                     RowLayout {
-                        Layout.fillWidth: true
+                        anchors.fill: parent
+                        anchors.margins: 14
                         Label {
-                            text: "Run as root (password dialog)"
+                            text: "Helper"
                             color: win.text
                             font.pixelSize: 15
                             Layout.fillWidth: true
                         }
-                        Switch {
-                            checked: settings.get("update_as_root")
-                            onToggled: settings.set("update_as_root", checked)
+                        Label {
+                            text: (win.rev, actions.detectedAurHelper()) ? "" : "not installed"
+                            color: win.danger
+                            font.pixelSize: 13
+                        }
+                        ComboBox {
+                            readonly property var keys: ["auto", "paru", "yay"]
+                            model: ["Automatic", "paru", "yay"]
+                            currentIndex: Math.max(0, keys.indexOf(settings.get("aur_helper")))
+                            onActivated: (i) => settings.set("aur_helper", keys[i])
                         }
                     }
-                    PillButton {
-                        text: "Reset to garuda-update"
-                        filled: false
-                        onClicked: { settings.reset("update_command"); cmd.text = settings.get("update_command") }
-                    }
                 }
-            }
-            Label {
-                text: "Runs through bash, so pipes and && work. With the root switch on, leave out sudo (e.g. pacman -Syu)."
-                wrapMode: Text.Wrap
-                font.pixelSize: 12
-                color: win.subtext
-                leftPadding: 16
-                Layout.fillWidth: true
-            }
 
-            Label {
-                text: "AUR HELPER"
-                font.pixelSize: 12
-                color: win.subtext
-                leftPadding: 16
-                Layout.topMargin: 16
-            }
-            Card {
-                Layout.fillWidth: true
-                implicitHeight: 56
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 14
-                    Label {
-                        text: "Helper"
-                        color: win.text
-                        font.pixelSize: 15
-                        Layout.fillWidth: true
-                    }
-                    Label {
-                        text: (win.rev, actions.detectedAurHelper()) ? "" : "not installed"
-                        color: win.danger
-                        font.pixelSize: 13
-                    }
-                    ComboBox {
-                        readonly property var keys: ["auto", "paru", "yay"]
-                        model: ["Automatic", "paru", "yay"]
-                        currentIndex: Math.max(0, keys.indexOf(settings.get("aur_helper")))
-                        onActivated: (i) => settings.set("aur_helper", keys[i])
+                Label {
+                    text: "CACHE"
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                    Layout.topMargin: 16
+                }
+                Card {
+                    Layout.fillWidth: true
+                    implicitHeight: 56
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 14
+                        Label {
+                            text: "Versions to keep per package"
+                            color: win.text
+                            font.pixelSize: 15
+                            Layout.fillWidth: true
+                        }
+                        ComboBox {
+                            model: [1, 2, 3]
+                            currentIndex: settings.get("cache_keep") - 1
+                            onActivated: (i) => settings.set("cache_keep", i + 1)
+                        }
                     }
                 }
-            }
-
-            Label {
-                text: "CACHE"
-                font.pixelSize: 12
-                color: win.subtext
-                leftPadding: 16
-                Layout.topMargin: 16
-            }
-            Card {
-                Layout.fillWidth: true
-                implicitHeight: 56
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 14
-                    Label {
-                        text: "Versions to keep per package"
-                        color: win.text
-                        font.pixelSize: 15
-                        Layout.fillWidth: true
-                    }
-                    ComboBox {
-                        model: [1, 2, 3]
-                        currentIndex: settings.get("cache_keep") - 1
-                        onActivated: (i) => settings.set("cache_keep", i + 1)
-                    }
+                Label {
+                    text: "Uninstalled packages are always removed. Applies to pacman and AUR build caches."
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                    Layout.fillWidth: true
                 }
+                Item { implicitHeight: 8 }
             }
-            Label {
-                text: "Uninstalled packages are always removed. Applies to pacman and AUR build caches."
-                wrapMode: Text.Wrap
-                font.pixelSize: 12
-                color: win.subtext
-                leftPadding: 16
-                Layout.fillWidth: true
-            }
-            Item { Layout.fillHeight: true }
         }
     }
 }
