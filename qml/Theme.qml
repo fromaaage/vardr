@@ -27,11 +27,11 @@ QtObject {
         settings.set("appearance", dark ? "dark" : "light")
     }
 
-    readonly property color bg: dark ? "#000000" : "#f2f2f7"
-    readonly property color sidebar: dark ? "#1c1c1e" : "#e9e9ee"
-    readonly property color card: dark ? "#1c1c1e" : "#ffffff"
-    readonly property color fill: dark ? "#2c2c2e" : "#e9e9ee"      // inputs, segmented
-    readonly property color separator: dark ? "#38383a" : "#d1d1d6"
+    readonly property color bg: dark ? "#1c1c1e" : "#f2f2f7"
+    readonly property color sidebar: dark ? "#161618" : "#e9e9ee"
+    readonly property color card: dark ? "#2c2c2e" : "#ffffff"
+    readonly property color fill: dark ? "#3a3a3c" : "#e9e9ee"      // inputs, segmented
+    readonly property color separator: dark ? "#48484a" : "#d1d1d6"
     readonly property color text: dark ? "#ffffff" : "#000000"
     readonly property color subtext: "#8e8e93"
     // Brand lime; darker olive in light mode so text stays readable on white

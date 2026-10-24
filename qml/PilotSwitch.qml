@@ -11,7 +11,7 @@ Switch {
         implicitWidth: 51
         implicitHeight: 31
         radius: height / 2
-        color: sw.checked ? Theme.success : (Theme.dark ? "#39393d" : "#e9e9eb")
+        color: sw.checked ? Theme.success : (Theme.dark ? "#48484a" : "#e9e9eb")
         opacity: sw.enabled ? 1 : 0.5
         Behavior on color { ColorAnimation { duration: Theme.animMs } }
         Rectangle {

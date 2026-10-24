@@ -26,7 +26,7 @@ TabBar {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: 7
-                color: tb.checked ? (Theme.dark ? "#636366" : "#ffffff") : "transparent"
+                color: tb.checked ? (Theme.dark ? "#6e6e73" : "#ffffff") : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.animMs } }
             }
         }

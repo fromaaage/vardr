@@ -58,7 +58,7 @@ ComboBox {
         }
         background: Rectangle {
             radius: 10
-            color: Theme.dark ? "#2c2c2e" : "#ffffff"
+            color: Theme.dark ? "#3a3a3c" : "#ffffff"
             border.color: Theme.separator
         }
         enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120 } }
