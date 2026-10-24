@@ -10,7 +10,7 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 520
     visible: !startHidden
-    title: "Garuda Pilot"
+    title: "Vardr"
     color: Theme.bg
 
     readonly property var pages: [
@@ -48,7 +48,7 @@ ApplicationWindow {
                 spacing: 4
 
                 Text {
-                    text: "Garuda Pilot"
+                    text: "Vardr"
                     font.pixelSize: 22
                     font.weight: Font.Bold
                     color: Theme.text

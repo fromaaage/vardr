@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Garuda Pilot
-Comment=One-click system update, AUR, cache cleaning and fixes
-Exec=garuda-pilot
-Icon=system-software-update
-Categories=System;Settings;
-Keywords=update;pacman;aur;cache;garuda;

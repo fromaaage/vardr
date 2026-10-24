@@ -1,10 +1,10 @@
-# Garuda Pilot
+# Vardr
 
 One-click system maintenance for Garuda Linux and other Arch-based systems. A lean replacement for the Garuda Toolbox maintenance tasks, built with PySide6/QML.
 
 *Not affiliated with the Garuda Linux project.*
 
-![Garuda Pilot](docs/screenshot-light.png)
+![Vardr](docs/screenshot-light.png)
 
 ## Features
 
@@ -29,8 +29,8 @@ Optional: `paru` or `yay`, `rate-mirrors`, `garuda-update`.
 ## Install
 
 ```sh
-git clone https://github.com/fromaaage/garuda-pilot.git
-cd garuda-pilot/packaging
+git clone https://github.com/fromaaage/vardr.git
+cd vardr/packaging
 makepkg -si
 ```
 
@@ -39,9 +39,9 @@ Or run from source: `python app.py` (`--tray` starts hidden in the tray).
 ## Notes
 
 - Root steps use pkexec (one password prompt per step; AUR helpers may ask again while installing).
-- With the tray available, closing the window keeps the app running. "Start at login" writes `~/.config/autostart/garuda-pilot.desktop`.
-- Settings: `~/.config/garuda-pilot/settings.json`.
-- Backups: `/etc/pacman.conf.bak-<timestamp>`, mirror lists as `<file>.garuda-pilot.bak`.
+- With the tray available, closing the window keeps the app running. "Start at login" writes `~/.config/autostart/vardr.desktop`.
+- Settings: `~/.config/vardr/settings.json`.
+- Backups: `/etc/pacman.conf.bak-<timestamp>`, mirror lists as `<file>.vardr.bak`.
 
 ## License
 

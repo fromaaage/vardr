@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Garuda Pilot - one-click system maintenance for Garuda/Arch."""
+"""Vardr - system update guardian for Arch-based systems."""
 import glob
 import os
 import shlex
@@ -22,7 +22,8 @@ from settings import Settings
 __version__ = "1.0.0"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-APP_ID = "garuda-pilot"
+APP_ID = "vardr"
+OLD_ID = "garuda-pilot"  # name before 1.0.0, migrated on start
 AUTOSTART = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
                          "autostart", f"{APP_ID}.desktop")
 AUR_HELPERS = ("paru", "yay")
@@ -215,6 +216,17 @@ class Actions(QObject):
         self._run(["update", "aur", "cache_pacman", "cache_aur"])
 
 
+def migrate_old_name():
+    """Carry settings over from garuda-pilot and drop its autostart entry."""
+    config = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+    old, new = os.path.join(config, OLD_ID), os.path.join(config, APP_ID)
+    if os.path.isdir(old) and not os.path.exists(new):
+        shutil.copytree(old, new)
+    old_autostart = os.path.join(config, "autostart", f"{OLD_ID}.desktop")
+    if os.path.exists(old_autostart):
+        os.remove(old_autostart)
+
+
 def launch_command():
     """Installed: plain command; from source: python + this file."""
     return APP_ID if shutil.which(APP_ID) else f"{sys.executable} {os.path.join(HERE, 'app.py')}"
@@ -224,7 +236,7 @@ def sync_autostart(enabled):
     if enabled:
         os.makedirs(os.path.dirname(AUTOSTART), exist_ok=True)
         with open(AUTOSTART, "w") as f:
-            f.write("[Desktop Entry]\nType=Application\nName=Garuda Pilot\n"
+            f.write("[Desktop Entry]\nType=Application\nName=Vardr\n"
                     f"Exec={launch_command()} --tray\nIcon=system-software-update\n"
                     "X-GNOME-Autostart-enabled=true\n")
     elif os.path.exists(AUTOSTART):
@@ -232,7 +244,7 @@ def sync_autostart(enabled):
 
 
 def other_instance(start_hidden):
-    """If Garuda Pilot already runs, ask it to show its window and return True."""
+    """If Vardr already runs, ask it to show its window and return True."""
     sock = QLocalSocket()
     sock.connectToServer(f"{APP_ID}-{os.getuid()}")
     if not sock.waitForConnected(300):
@@ -248,7 +260,7 @@ def main():
     start_hidden = "--tray" in sys.argv
     QQuickStyle.setStyle("Basic")
     app = QApplication(sys.argv)
-    app.setApplicationName("Garuda Pilot")
+    app.setApplicationName("Vardr")
     app.setApplicationVersion(__version__)
     app.setDesktopFileName(APP_ID)
     if other_instance(start_hidden):
@@ -259,6 +271,7 @@ def main():
     server = QLocalServer()
     server.listen(server_name)
 
+    migrate_old_name()
     settings = Settings()
     runner = Runner()
     actions = Actions(runner, settings)
@@ -311,8 +324,8 @@ def main():
             busy = checker.checking or runner.running
             tray.setIcon(QIcon.fromTheme("update-busy" if busy else
                                          "update-medium" if n else "update-none"))
-            tray.setToolTip(f"Garuda Pilot – {n} update{'s' if n != 1 else ''} available"
-                            if n else "Garuda Pilot – system is up to date")
+            tray.setToolTip(f"Vardr – {n} update{'s' if n != 1 else ''} available"
+                            if n else "Vardr – system is up to date")
 
         checker.changed.connect(refresh_tray)
         checker.checkingChanged.connect(refresh_tray)

@@ -76,7 +76,7 @@ def load(path=PACMAN_CONF):
 def write_candidate(text):
     """Write the new config to a temp file and validate it with pacman-conf.
     Returns (path, error)."""
-    fd, path = tempfile.mkstemp(prefix="garuda-pilot-", suffix=".conf")
+    fd, path = tempfile.mkstemp(prefix="vardr-", suffix=".conf")
     with os.fdopen(fd, "w") as f:
         f.write(text)
     os.chmod(path, 0o644)
@@ -215,8 +215,8 @@ CACHYOS_VARIANTS = ["v3", "v4"]  # derived from cachyos-mirrorlist via $arch_vN
 
 def mirrors_script():
     """Root script: rank mirrors per list; a list is only replaced when the
-    new one contains servers. Old list kept as <file>.garuda-pilot.bak."""
-    lines = ['replace() { cp -a "$2" "$2.garuda-pilot.bak"; install -m644 "$1" "$2"; '
+    new one contains servers. Old list kept as <file>.vardr.bak."""
+    lines = ['replace() { cp -a "$2" "$2.vardr.bak"; install -m644 "$1" "$2"; '
              'echo "   $(grep -c \'^Server\' "$2") mirrors -> $2"; }']
     for target, path in MIRRORLISTS:
         if not os.path.isfile(path):

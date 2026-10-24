@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Vardr
+Comment=System update guardian: updates, AUR, cache, repositories, notifications
+Exec=vardr
+Icon=system-software-update
+Categories=System;Settings;
+Keywords=update;pacman;aur;cache;mirrors;arch;garuda;

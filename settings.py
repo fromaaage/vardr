@@ -1,11 +1,11 @@
-"""Settings stored as JSON in ~/.config/garuda-pilot/settings.json."""
+"""Settings stored as JSON in ~/.config/vardr/settings.json."""
 import json
 import os
 
 from PySide6.QtCore import QObject, Signal, Slot
 
 CONFIG_DIR = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "garuda-pilot")
+    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "vardr")
 PATH = os.path.join(CONFIG_DIR, "settings.json")
 
 DEFAULTS = {
