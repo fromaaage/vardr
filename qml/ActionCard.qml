@@ -7,7 +7,7 @@ Card {
     property string detail
     property string button
     property string icon
-    property color tint: Theme.accent
+    property color tint: Theme.tileBlue
     signal triggered()
     Layout.fillWidth: true
     implicitHeight: 72

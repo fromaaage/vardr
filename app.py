@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Varðr - system update guardian for Arch-based systems."""
+"""varðr - system update guardian for Arch-based systems."""
 import glob
 import os
 import shlex
@@ -255,7 +255,7 @@ def sync_autostart(enabled):
     if enabled:
         os.makedirs(os.path.dirname(AUTOSTART), exist_ok=True)
         with open(AUTOSTART, "w") as f:
-            f.write("[Desktop Entry]\nType=Application\nName=Varðr\n"
+            f.write("[Desktop Entry]\nType=Application\nName=varðr\n"
                     f"Exec={launch_command()} --tray\nIcon={APP_ICON}\n"
                     "X-GNOME-Autostart-enabled=true\n")
     elif os.path.exists(AUTOSTART):
@@ -263,7 +263,7 @@ def sync_autostart(enabled):
 
 
 def other_instance(start_hidden):
-    """If Varðr already runs, ask it to show its window and return True."""
+    """If varðr already runs, ask it to show its window and return True."""
     sock = QLocalSocket()
     sock.connectToServer(f"{APP_ID}-{os.getuid()}")
     if not sock.waitForConnected(300):
@@ -279,7 +279,7 @@ def main():
     start_hidden = "--tray" in sys.argv
     QQuickStyle.setStyle("Basic")
     app = QApplication(sys.argv)
-    app.setApplicationName("Varðr")
+    app.setApplicationName("varðr")
     app.setApplicationVersion(__version__)
     app.setDesktopFileName(APP_ID)
     app.setWindowIcon(QIcon(APP_ICON))
@@ -343,9 +343,9 @@ def main():
             n = checker.count
             busy = checker.checking or runner.running
             tray.setIcon(tray_icon(n > 0))
-            tray.setToolTip("Varðr – working…" if busy else
-                            f"Varðr – {n} update{'s' if n != 1 else ''} available" if n else
-                            "Varðr – system is up to date")
+            tray.setToolTip("varðr – working…" if busy else
+                            f"varðr – {n} update{'s' if n != 1 else ''} available" if n else
+                            "varðr – system is up to date")
 
         checker.changed.connect(refresh_tray)
         checker.checkingChanged.connect(refresh_tray)

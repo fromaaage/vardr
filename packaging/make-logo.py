@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Varðr icon and wordmark as SVG from Inter Display Black (OFL).
+"""Generate the varðr icon and wordmark as SVG from Inter Display Black (OFL).
 
 The ð crossbar is overlaid in the accent color. Needs the Inter font installed.
 Usage: python packaging/make-logo.py   (writes icons/vardr.svg, icons/wordmark-*.svg)
@@ -10,8 +10,11 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtGui import QFont, QFontMetricsF, QGuiApplication, QPainterPath  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ACCENT = "#ff2bd6"
+ACCENT = "#c6ff00"
+ACCENT_LIGHT = "#5f8a00"  # lime is unreadable on white
 BG_TOP, BG_BOTTOM = "#1c1c1f", "#0b0b0d"
+GLYPH = "#ffffff"
+BORDER = "#2c2c30"
 REF_SIZE = 700  # pixel size the crossbar polygon was measured at
 # Crossbar of "ð" in Inter Display Black, glyph coordinates at REF_SIZE
 CROSSBAR = [(64.2, -400.2), (317.2, -532.2), (317.2, -477.2), (64.2, -343.2)]
@@ -41,9 +44,9 @@ def svg_path(path):
     return "".join(out) + "Z"
 
 
-def crossbar(scale, dx, dy):
+def crossbar(scale, dx, dy, color=None):
     pts = " ".join(f"{x * scale + dx:.1f},{y * scale + dy:.1f}" for x, y in CROSSBAR)
-    return f'<polygon points="{pts}" fill="{ACCENT}"/>'
+    return f'<polygon points="{pts}" fill="{color or ACCENT}"/>'
 
 
 def icon():
@@ -60,16 +63,16 @@ def icon():
       <stop offset="1" stop-color="{BG_BOTTOM}"/>
     </linearGradient>
   </defs>
-  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)" stroke="#2c2c30" stroke-width="6"/>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)" stroke="{BORDER}" stroke-width="6"/>
   <g transform="translate({dx:.1f} {dy:.1f})">
-    <path fill="#ffffff" d="{svg_path(path)}"/>
+    <path fill="{GLYPH}" d="{svg_path(path)}"/>
     {crossbar(s, 0, 0)}
   </g>
 </svg>
 '''
 
 
-def wordmark(color):
+def wordmark(color, accent=None):
     size = 200
     f = font(size)
     path = QPainterPath()
@@ -82,7 +85,7 @@ def wordmark(color):
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{w:.0f}" height="{h:.0f}" viewBox="0 0 {w:.0f} {h:.0f}">
   <g transform="translate({dx:.1f} {dy:.1f})">
     <path fill="{color}" d="{svg_path(path)}"/>
-    {crossbar(size / REF_SIZE, eth_x, 0)}
+    {crossbar(size / REF_SIZE, eth_x, 0, accent)}
   </g>
 </svg>
 '''
@@ -93,7 +96,7 @@ def main():
     files = {
         "icons/vardr.svg": icon(),
         "icons/wordmark-dark.svg": wordmark("#ffffff"),   # for dark backgrounds
-        "icons/wordmark-light.svg": wordmark("#111111"),  # for light backgrounds
+        "icons/wordmark-light.svg": wordmark("#111111", ACCENT_LIGHT),  # for light backgrounds
     }
     for name, content in files.items():
         with open(os.path.join(ROOT, name), "w") as fh:

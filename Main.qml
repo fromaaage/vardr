@@ -10,11 +10,11 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 520
     visible: !startHidden
-    title: "Varðr – System Updates"
+    title: "varðr – System Updates"
     color: Theme.bg
 
     readonly property var pages: [
-        { title: "Maintenance", icon: "update", tint: Theme.accent },
+        { title: "Maintenance", icon: "update", tint: Theme.tileBlue },
         { title: "Repositories", icon: "database", tint: Theme.purple },
         { title: "Settings", icon: "gear", tint: "#8e8e93" }
     ]
@@ -90,14 +90,14 @@ ApplicationWindow {
                             spacing: 10
                             IconTile {
                                 icon: nav.modelData.icon
-                                color: nav.current ? Qt.rgba(1, 1, 1, 0.22) : nav.modelData.tint
+                                color: nav.current ? (Theme.dark ? "#111111" : Qt.rgba(1, 1, 1, 0.22)) : nav.modelData.tint
                                 size: 28
                             }
                             Text {
                                 text: nav.modelData.title
                                 font.pixelSize: 15
                                 font.weight: nav.current ? Font.DemiBold : Font.Normal
-                                color: nav.current ? "white" : Theme.text
+                                color: nav.current ? Theme.accentText : Theme.text
                                 Layout.fillWidth: true
                             }
                             // Update count badge
@@ -107,7 +107,7 @@ ApplicationWindow {
                                 implicitWidth: Math.max(22, badgeText.implicitWidth + 12)
                                 implicitHeight: 22
                                 radius: 11
-                                color: nav.current ? "white" : Theme.danger
+                                color: nav.current ? Theme.accentText : Theme.danger
                                 Text {
                                     id: badgeText
                                     anchors.centerIn: parent

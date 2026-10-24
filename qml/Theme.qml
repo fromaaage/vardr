@@ -34,7 +34,10 @@ QtObject {
     readonly property color separator: dark ? "#38383a" : "#d1d1d6"
     readonly property color text: dark ? "#ffffff" : "#000000"
     readonly property color subtext: "#8e8e93"
-    readonly property color accent: dark ? "#ff2bd6" : "#d4149f"  // brand magenta, darker in light mode for contrast
+    // Brand lime; darker olive in light mode so text stays readable on white
+    readonly property color accent: dark ? "#c6ff00" : "#5f8a00"
+    readonly property color accentText: dark ? "#111111" : "#ffffff"  // text on filled accent
+    readonly property color tileBlue: "#0a84ff"
     readonly property color danger: "#ff453a"
     readonly property color success: dark ? "#30d158" : "#34c759"
     readonly property color orange: "#ff9f0a"

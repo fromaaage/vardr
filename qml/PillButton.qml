@@ -15,7 +15,7 @@ Button {
     contentItem: Text {
         text: pb.text
         font: pb.font
-        color: pb.filled ? "white" : pb.tint
+        color: pb.filled ? (Qt.colorEqual(pb.tint, Theme.accent) ? Theme.accentText : "white") : pb.tint
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }

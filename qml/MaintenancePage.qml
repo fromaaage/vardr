@@ -18,7 +18,7 @@ ColumnLayout {
                 spacing: 14
                 IconTile {
                     icon: "update"
-                    color: checker.count ? Theme.accent : Theme.success
+                    color: checker.count ? Theme.orange : Theme.success
                     size: 48
                     Behavior on color { ColorAnimation { duration: Theme.animMs } }
                 }
@@ -112,7 +112,7 @@ ColumnLayout {
             detail: (Theme.rev, settings.get("update_command"))
             button: "Update"
             icon: "update"
-            tint: Theme.accent
+            tint: Theme.tileBlue
             onTriggered: Theme.begin(actions.update)
         }
         ActionCard {
