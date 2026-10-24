@@ -22,5 +22,6 @@ package() {
     python -m compileall -q -d "/usr/share/$pkgname" "$pkgdir/usr/share/$pkgname"
     install -Dm755 packaging/vardr.sh "$pkgdir/usr/bin/$pkgname"
     install -Dm644 packaging/vardr.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
+    install -Dm644 icons/vardr.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

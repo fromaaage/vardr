@@ -7,8 +7,9 @@ import shutil
 import subprocess
 import sys
 
-from PySide6.QtCore import QMetaObject, QObject, Property, Signal, Slot
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QMetaObject, QObject, QRectF, Property, Signal, Slot
+from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
@@ -216,6 +217,24 @@ class Actions(QObject):
         self._run(["update", "aur", "cache_pacman", "cache_aur"])
 
 
+APP_ICON = os.path.join(HERE, "icons", "vardr.svg")
+
+
+def tray_icon(badge):
+    """App icon, with a red dot in the corner when updates are waiting."""
+    pix = QPixmap(64, 64)
+    pix.fill(QColor(0, 0, 0, 0))
+    p = QPainter(pix)
+    p.setRenderHint(QPainter.Antialiasing)
+    QSvgRenderer(APP_ICON).render(p, QRectF(0, 0, 64, 64))
+    if badge:
+        p.setPen(QColor("white"))
+        p.setBrush(QColor("#ff453a"))
+        p.drawEllipse(QRectF(38, 0, 26, 26))
+    p.end()
+    return QIcon(pix)
+
+
 def migrate_old_name():
     """Carry settings over from garuda-pilot and drop its autostart entry."""
     config = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
@@ -237,7 +256,7 @@ def sync_autostart(enabled):
         os.makedirs(os.path.dirname(AUTOSTART), exist_ok=True)
         with open(AUTOSTART, "w") as f:
             f.write("[Desktop Entry]\nType=Application\nName=Vardr\n"
-                    f"Exec={launch_command()} --tray\nIcon=system-software-update\n"
+                    f"Exec={launch_command()} --tray\nIcon={APP_ICON}\n"
                     "X-GNOME-Autostart-enabled=true\n")
     elif os.path.exists(AUTOSTART):
         os.remove(AUTOSTART)
@@ -263,6 +282,7 @@ def main():
     app.setApplicationName("Vardr")
     app.setApplicationVersion(__version__)
     app.setDesktopFileName(APP_ID)
+    app.setWindowIcon(QIcon(APP_ICON))
     if other_instance(start_hidden):
         return
 
@@ -306,7 +326,7 @@ def main():
     server.newConnection.connect(lambda: (server.nextPendingConnection().readyRead.connect(show_window)))
 
     if tray_ok:
-        tray = QSystemTrayIcon(QIcon.fromTheme("update-none"), app)
+        tray = QSystemTrayIcon(tray_icon(False), app)
         menu = QMenu()
         menu.addAction("Open", show_window)
         menu.addAction("Check for updates", checker.check)
@@ -322,10 +342,10 @@ def main():
         def refresh_tray():
             n = checker.count
             busy = checker.checking or runner.running
-            tray.setIcon(QIcon.fromTheme("update-busy" if busy else
-                                         "update-medium" if n else "update-none"))
-            tray.setToolTip(f"Vardr – {n} update{'s' if n != 1 else ''} available"
-                            if n else "Vardr – system is up to date")
+            tray.setIcon(tray_icon(n > 0))
+            tray.setToolTip("Vardr – working…" if busy else
+                            f"Vardr – {n} update{'s' if n != 1 else ''} available" if n else
+                            "Vardr – system is up to date")
 
         checker.changed.connect(refresh_tray)
         checker.checkingChanged.connect(refresh_tray)
@@ -333,7 +353,7 @@ def main():
         checker.newUpdates.connect(lambda total, aur, names: tray.showMessage(
             f"{total} update{'s' if total != 1 else ''} available"
             + (f" ({aur} AUR)" if aur else ""), names,
-            QIcon.fromTheme("system-software-update"), 10_000))
+            QIcon(APP_ICON), 10_000))
         refresh_tray()
         tray.show()
 

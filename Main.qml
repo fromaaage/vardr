@@ -10,7 +10,7 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 520
     visible: !startHidden
-    title: "Vardr"
+    title: "Vardr – System Updates"
     color: Theme.bg
 
     readonly property var pages: [
@@ -47,13 +47,28 @@ ApplicationWindow {
                 anchors.topMargin: 20
                 spacing: 4
 
-                Text {
-                    text: "Vardr"
-                    font.pixelSize: 22
-                    font.weight: Font.Bold
-                    color: Theme.text
-                    Layout.leftMargin: 8
+                RowLayout {
+                    Layout.leftMargin: 6
                     Layout.bottomMargin: 14
+                    spacing: 10
+                    Image {
+                        source: "icons/vardr.svg"
+                        sourceSize: Qt.size(34, 34)
+                    }
+                    ColumnLayout {
+                        spacing: 0
+                        Text {
+                            text: "Vardr"
+                            font.pixelSize: 22
+                            font.weight: Font.Bold
+                            color: Theme.text
+                        }
+                        Text {
+                            text: "Update guardian"
+                            font.pixelSize: 12
+                            color: Theme.subtext
+                        }
+                    }
                 }
 
                 Repeater {

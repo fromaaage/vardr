@@ -1,8 +1,9 @@
 [Desktop Entry]
 Type=Application
 Name=Vardr
+GenericName=System Update Guardian
 Comment=System update guardian: updates, AUR, cache, repositories, notifications
 Exec=vardr
-Icon=system-software-update
+Icon=vardr
 Categories=System;Settings;
 Keywords=update;pacman;aur;cache;mirrors;arch;garuda;
