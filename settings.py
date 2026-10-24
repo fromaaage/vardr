@@ -20,6 +20,8 @@ DEFAULTS = {
     "autostart": True,
     "last_check": 0,
     "notified": [],
+    "appearance": "",          # "", "dark" or "light" (choice made in the app)
+    "appearance_desktop": "",  # desktop mode when the app last ran
 }
 
 

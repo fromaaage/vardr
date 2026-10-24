@@ -3,7 +3,30 @@ import QtQuick
 
 // Colors (iOS system palette) and app-wide UI state shared by all pages.
 QtObject {
-    readonly property bool dark: Qt.styleHints.colorScheme === Qt.ColorScheme.Dark
+    // Appearance: the in-app choice is kept only while the desktop stays in the
+    // mode it had when the choice was made; a desktop change always wins.
+    readonly property bool desktopDark: Qt.styleHints.colorScheme === Qt.ColorScheme.Dark
+    property bool dark: desktopDark
+
+    Component.onCompleted: {
+        const desk = desktopDark ? "dark" : "light"
+        const choice = settings.get("appearance")
+        dark = choice && settings.get("appearance_desktop") === desk ? choice === "dark" : desktopDark
+        if (settings.get("appearance_desktop") !== desk)
+            settings.set("appearance", "")
+        settings.set("appearance_desktop", desk)
+    }
+    onDesktopDarkChanged: {
+        dark = desktopDark
+        settings.set("appearance", "")
+        settings.set("appearance_desktop", desktopDark ? "dark" : "light")
+    }
+
+    function toggleDark() {
+        dark = !dark
+        settings.set("appearance", dark ? "dark" : "light")
+    }
+
     readonly property color bg: dark ? "#000000" : "#f2f2f7"
     readonly property color sidebar: dark ? "#1c1c1e" : "#e9e9ee"
     readonly property color card: dark ? "#1c1c1e" : "#ffffff"

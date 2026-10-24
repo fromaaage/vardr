@@ -112,17 +112,33 @@ ApplicationWindow {
 
                 Item { Layout.fillHeight: true }
 
-                // Small live status at the bottom of the sidebar
-                Text {
-                    text: actions.step ? actions.step
-                        : checker.checking ? "Checking…"
-                        : checker.count ? Theme.plural(checker.count, "update") + " available"
-                        : "System up to date"
-                    font.pixelSize: 12
-                    color: Theme.subtext
-                    elide: Text.ElideRight
+                // Small live status + light/dark toggle at the bottom of the sidebar
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.leftMargin: 8
+                    spacing: 8
+                    Text {
+                        text: actions.step ? actions.step
+                            : checker.checking ? "Checking…"
+                            : checker.count ? Theme.plural(checker.count, "update") + " available"
+                            : "System up to date"
+                        font.pixelSize: 12
+                        color: Theme.subtext
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    IconTile {
+                        icon: Theme.dark ? "sun" : "moon"
+                        color: modeHover.hovered ? Theme.accent : (Theme.dark ? "#48484a" : "#8e8e93")
+                        size: 32
+                        radius: 16
+                        Behavior on color { ColorAnimation { duration: Theme.animMs } }
+                        HoverHandler { id: modeHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: Theme.toggleDark() }
+                        ToolTip.visible: modeHover.hovered
+                        ToolTip.delay: 600
+                        ToolTip.text: Theme.dark ? "Light mode" : "Dark mode"
+                    }
                 }
             }
 
