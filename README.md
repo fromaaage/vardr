@@ -2,6 +2,8 @@
 
 One-click system maintenance for Garuda Linux and other Arch-based systems. A lean replacement for the Garuda Toolbox maintenance tasks, built with PySide6/QML.
 
+*Not affiliated with the Garuda Linux project.*
+
 ![Garuda Pilot](docs/screenshot-light.png)
 
 ## Features
