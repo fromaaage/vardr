@@ -1,6 +1,7 @@
 """Settings stored as JSON in ~/.config/vardr/settings.json."""
 import json
 import os
+import shutil
 
 from PySide6.QtCore import QObject, Signal, Slot
 
@@ -8,12 +9,22 @@ CONFIG_DIR = os.path.join(
     os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "vardr")
 PATH = os.path.join(CONFIG_DIR, "settings.json")
 
+GARUDA_FIX = "garuda-health --fix; if command -v limine-update >/dev/null; then limine-update; fi"
+
+
+def detect_defaults(which=shutil.which):
+    """Garuda tools if present, plain pacman otherwise. No fix command without garuda-health."""
+    return {
+        "update_command": "garuda-update" if which("garuda-update") else "pacman -Syu",
+        "fix_command": GARUDA_FIX if which("garuda-health") else "",
+    }
+
+
 DEFAULTS = {
-    "update_command": "garuda-update",
+    **detect_defaults(),
     "update_as_root": True,
     "aur_helper": "auto",
     "cache_keep": 2,
-    "fix_command": "garuda-health --fix; if command -v limine-update >/dev/null; then limine-update; fi",
     "fix_as_root": True,
     "check_interval": 24,  # hours, 0 = off
     "check_aur": True,
@@ -52,6 +63,10 @@ class Settings(QObject):
             json.dump(self._data, f, indent=2)
         os.replace(tmp, PATH)
         self.changed.emit()
+
+    @Slot(str, result="QVariant")
+    def defaultValue(self, key):
+        return DEFAULTS.get(key)
 
     @Slot(str, result=bool)
     def isDefault(self, key):

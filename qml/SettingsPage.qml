@@ -57,7 +57,7 @@ ScrollView {
         CommandCard {
             key: "update_command"
             rootKey: "update_as_root"
-            resetLabel: "Reset to garuda-update"
+            resetLabel: "Reset to " + settings.defaultValue("update_command")
         }
         Footnote { text: "Runs through bash, so pipes and && work. With the root switch on, leave out sudo (e.g. pacman -Syu)." }
 
@@ -65,7 +65,8 @@ ScrollView {
         CommandCard {
             key: "fix_command"
             rootKey: "fix_as_root"
-            resetLabel: "Reset to default"
+            placeholder: "Optional – e.g. a script that repairs your system"
+            resetLabel: settings.defaultValue("fix_command") ? "Reset to default" : "Clear"
         }
 
         SectionLabel { text: "AUR HELPER" }
@@ -135,6 +136,7 @@ ScrollView {
         property string key
         property string rootKey
         property string resetLabel
+        property string placeholder
         Layout.fillWidth: true
         implicitHeight: ccCol.implicitHeight + 24
         ColumnLayout {
@@ -148,6 +150,7 @@ ScrollView {
                 id: field
                 Layout.fillWidth: true
                 text: settings.get(cc.key)
+                placeholderText: cc.placeholder
                 font.family: "monospace"
                 onEditingFinished: settings.set(cc.key, text)
             }

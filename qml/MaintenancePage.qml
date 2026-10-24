@@ -129,12 +129,17 @@ ColumnLayout {
             button: "Clean"
             icon: "trash"
             tint: Theme.orange
+            // Full width when there is no fix card next to it
+            Layout.columnSpan: fixCard.visible ? 1 : 2
             onTriggered: Theme.begin(actions.cleanCache)
         }
         ActionCard {
-            title: "Garuda fix"
-            detail: (Theme.rev, settings.isDefault("fix_command")) ? "garuda-health --fix → limine-update"
-                                                                   : settings.get("fix_command")
+            id: fixCard
+            readonly property string cmd: (Theme.rev, settings.get("fix_command"))
+            visible: cmd.trim().length > 0
+            title: "System fix"
+            detail: cmd.indexOf("garuda-health --fix") === 0 && cmd.indexOf("limine-update") > 0
+                    ? "garuda-health --fix → limine-update" : cmd
             button: "Run"
             icon: "shield"
             tint: Theme.teal

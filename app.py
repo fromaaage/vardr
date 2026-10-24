@@ -153,7 +153,7 @@ class Actions(QObject):
         "aur": ("AUR update", "_aur"),
         "cache_pacman": ("Clean pacman cache", "_cache_pacman"),
         "cache_aur": ("Clean AUR cache", "_cache_aur"),
-        "fix": ("Garuda fix", "_fix"),
+        "fix": ("System fix", "_fix"),
         "repos_save": ("Save repositories", "_repos_save"),
         "mirrors": ("Rank mirrors", "_mirrors"),
     }
