@@ -12,6 +12,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 
+from repos import RepoEditor
 from runner import Runner
 from settings import Settings
 
@@ -50,6 +51,7 @@ class Actions(QObject):
         self._index = 0
         self._total = 0
         self._active = False
+        self._repo_script = ""
         runner.finished.connect(self._next)
 
     def _get_step(self):
@@ -114,12 +116,16 @@ class Actions(QObject):
             return False
         return self.runner.start(cmd, as_root=bool(self.settings.get("fix_as_root")))
 
+    def _repos_save(self):
+        return self.runner.start(self._repo_script, as_root=True, display="Save pacman.conf")
+
     STEPS = {
         "update": ("System update", "_update"),
         "aur": ("AUR update", "_aur"),
         "cache_pacman": ("Clean pacman cache", "_cache_pacman"),
         "cache_aur": ("Clean AUR cache", "_cache_aur"),
         "fix": ("Garuda fix", "_fix"),
+        "repos_save": ("Save repositories", "_repos_save"),
     }
 
     def _run(self, keys):
@@ -157,6 +163,12 @@ class Actions(QObject):
     def aur(self):
         self._run(["aur"])
 
+    @Slot(str)
+    def saveRepos(self, script):
+        """Install the new pacman.conf, then run a full update (no partial -Sy)."""
+        self._repo_script = script
+        self._run(["repos_save", "update"])
+
     @Slot()
     def fix(self):
         self._run(["fix"])
@@ -185,6 +197,8 @@ def main():
     ctx.setContextProperty("settings", settings)
     ctx.setContextProperty("runner", runner)
     ctx.setContextProperty("actions", actions)
+    repo_editor = RepoEditor()
+    ctx.setContextProperty("repoEditor", repo_editor)
     engine.load(os.path.join(HERE, "Main.qml"))
     if not engine.rootObjects():
         sys.exit(1)

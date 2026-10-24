@@ -23,6 +23,7 @@ ApplicationWindow {
     property string status: ""
     property bool statusOk: true
     property int rev: 0   // bumped on settings change to refresh bindings
+    property alias currentTab: tabs.currentIndex
 
     function begin(action) {
         log.clear()
@@ -124,7 +125,7 @@ ApplicationWindow {
             anchors.leftMargin: 24
             anchors.rightMargin: 24
             Label {
-                text: tabs.currentIndex === 0 ? "Maintenance" : "Settings"
+                text: ["Maintenance", "Repositories", "Settings"][tabs.currentIndex]
                 font.pixelSize: 28
                 font.weight: Font.Bold
                 color: win.text
@@ -134,7 +135,7 @@ ApplicationWindow {
                 id: tabs
                 background: Rectangle { radius: 9; color: win.dark ? "#2c2c2e" : "#e3e3e8" }
                 Repeater {
-                    model: ["Maintenance", "Settings"]
+                    model: ["Maintenance", "Repositories", "Settings"]
                     TabButton {
                         id: tb
                         required property string modelData
@@ -319,6 +320,266 @@ ApplicationWindow {
                     PillButton { text: "Default"; filled: false; onClicked: runner.send("") }
                     PillButton { text: "No"; filled: false; tint: win.danger; onClicked: runner.send("n") }
                     PillButton { text: "Yes"; onClicked: runner.send("y") }
+                }
+            }
+        }
+
+        // ---------------- Repositories ----------------
+        ColumnLayout {
+            id: repoPage
+            spacing: 12
+            property bool dirty: false
+
+            function reload() {
+                repoModel.clear()
+                for (const r of repoEditor.load())
+                    repoModel.append(r)
+                dirty = false
+            }
+            function items() {
+                const out = []
+                for (let i = 0; i < repoModel.count; i++)
+                    out.push(repoModel.get(i))
+                return out
+            }
+
+            ListModel { id: repoModel }
+            Component.onCompleted: reload()
+
+            Connections {
+                target: actions
+                function onDone(code) { repoPage.reload() }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Label {
+                    text: repoPage.dirty ? "Unsaved changes" : "Top repositories take precedence. Drag ≡ to reorder."
+                    color: repoPage.dirty ? win.accent : win.subtext
+                    font.pixelSize: 13
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+                PillButton { text: "Add"; filled: false; onClicked: addPopup.open() }
+                PillButton {
+                    text: "Revert"
+                    filled: false
+                    tint: win.danger
+                    enabled: repoPage.dirty
+                    onClicked: repoPage.reload()
+                }
+                PillButton {
+                    text: "Save & update"
+                    enabled: repoPage.dirty && !actions.step
+                    onClicked: {
+                        const script = repoEditor.prepare(repoPage.items())
+                        if (!script)
+                            return
+                        tabs.currentIndex = 0
+                        win.begin(() => actions.saveRepos(script))
+                    }
+                }
+            }
+
+            Label {
+                text: repoEditor.error
+                visible: text.length > 0
+                color: win.danger
+                wrapMode: Text.Wrap
+                font.pixelSize: 13
+                Layout.fillWidth: true
+            }
+
+            ListView {
+                id: repoList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                spacing: 8
+                model: repoModel
+                moveDisplaced: Transition { NumberAnimation { properties: "y"; duration: 150 } }
+
+                delegate: Card {
+                    id: row
+                    required property int index
+                    required property string name
+                    required property bool active
+                    required property string siglevel
+                    required property string source
+                    required property string key
+                    width: repoList.width
+                    height: 60
+                    opacity: active ? 1 : 0.55
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 14
+                        spacing: 10
+
+                        Label {
+                            text: "≡"
+                            font.pixelSize: 22
+                            color: win.subtext
+                            Layout.preferredWidth: 28
+                            horizontalAlignment: Text.AlignHCenter
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -8
+                                cursorShape: Qt.SizeVerCursor
+                                preventStealing: true
+                                onPositionChanged: (mouse) => {
+                                    const p = mapToItem(repoList.contentItem, mouse.x, mouse.y)
+                                    const to = repoList.indexAt(10, p.y)
+                                    if (to >= 0 && to !== row.index) {
+                                        repoModel.move(row.index, to, 1)
+                                        repoPage.dirty = true
+                                    }
+                                }
+                            }
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            Label {
+                                text: row.name + (row.key ? "  · key " + row.key : "")
+                                font.pixelSize: 15
+                                font.weight: Font.DemiBold
+                                color: win.text
+                            }
+                            Label {
+                                text: row.source
+                                font.family: "monospace"
+                                font.pixelSize: 11
+                                color: win.subtext
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+                        ComboBox {
+                            id: sig
+                            readonly property var levels: {
+                                const l = repoEditor.sigLevels()
+                                return l.indexOf(row.siglevel) < 0 ? l.concat([row.siglevel]) : l
+                            }
+                            model: levels.map(v => v || "Default SigLevel")
+                            currentIndex: levels.indexOf(row.siglevel)
+                            Layout.preferredWidth: 210
+                            onActivated: (i) => {
+                                repoModel.setProperty(row.index, "siglevel", levels[i])
+                                repoPage.dirty = true
+                            }
+                        }
+                        Switch {
+                            checked: row.active
+                            onToggled: {
+                                repoModel.setProperty(row.index, "active", checked)
+                                repoPage.dirty = true
+                            }
+                        }
+                        PillButton {
+                            text: "✕"
+                            filled: false
+                            tint: win.danger
+                            leftPadding: 14
+                            rightPadding: 14
+                            onClicked: {
+                                repoModel.remove(row.index)
+                                repoPage.dirty = true
+                            }
+                        }
+                    }
+                }
+            }
+
+            Popup {
+                id: addPopup
+                parent: Overlay.overlay
+                anchors.centerIn: parent
+                width: 460
+                modal: true
+                padding: 20
+                background: Rectangle { radius: 14; color: win.card }
+                onOpened: { newName.text = ""; newValue.text = ""; newKey.text = ""; addError.text = "" }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 10
+                    Label {
+                        text: "Add repository"
+                        font.pixelSize: 20
+                        font.weight: Font.Bold
+                        color: win.text
+                    }
+                    TextField {
+                        id: newName
+                        Layout.fillWidth: true
+                        placeholderText: "Name, e.g. chaotic-aur"
+                        color: win.text
+                        placeholderTextColor: win.subtext
+                        background: Rectangle { radius: 8; color: win.dark ? "#2c2c2e" : "#e9e9ee" }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ComboBox {
+                            id: newKind
+                            model: ["Server", "Include"]
+                        }
+                        TextField {
+                            id: newValue
+                            Layout.fillWidth: true
+                            placeholderText: newKind.currentIndex === 0
+                                ? "https://example.org/$repo/$arch" : "/etc/pacman.d/example-mirrorlist"
+                            font.family: "monospace"
+                            color: win.text
+                            placeholderTextColor: win.subtext
+                            background: Rectangle { radius: 8; color: win.dark ? "#2c2c2e" : "#e9e9ee" }
+                        }
+                    }
+                    ComboBox {
+                        id: newSig
+                        Layout.fillWidth: true
+                        readonly property var levels: repoEditor.sigLevels()
+                        model: levels.map(v => v || "Default SigLevel")
+                    }
+                    TextField {
+                        id: newKey
+                        Layout.fillWidth: true
+                        placeholderText: "Signing key ID (optional, imported on save)"
+                        font.family: "monospace"
+                        color: win.text
+                        placeholderTextColor: win.subtext
+                        background: Rectangle { radius: 8; color: win.dark ? "#2c2c2e" : "#e9e9ee" }
+                    }
+                    Label {
+                        id: addError
+                        visible: text.length > 0
+                        color: win.danger
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Item { Layout.fillWidth: true }
+                        PillButton { text: "Cancel"; filled: false; onClicked: addPopup.close() }
+                        PillButton {
+                            text: "Add"
+                            onClicked: {
+                                const r = repoEditor.newRepo(newName.text, newKind.currentText,
+                                                             newValue.text, newSig.levels[newSig.currentIndex])
+                                if (typeof r === "string") {
+                                    addError.text = r
+                                    return
+                                }
+                                r.key = newKey.text.replace(/\s/g, "")
+                                repoModel.append(r)
+                                repoPage.dirty = true
+                                addPopup.close()
+                                repoList.positionViewAtEnd()
+                            }
+                        }
+                    }
                 }
             }
         }
