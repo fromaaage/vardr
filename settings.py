@@ -11,6 +11,7 @@ PATH = os.path.join(CONFIG_DIR, "settings.json")
 DEFAULTS = {
     "update_command": "garuda-update",
     "update_as_root": True,
+    "aur_helper": "auto",
 }
 
 

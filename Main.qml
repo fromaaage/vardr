@@ -22,13 +22,29 @@ ApplicationWindow {
 
     property string status: ""
     property bool statusOk: true
+    property int rev: 0   // bumped on settings change to refresh bindings
+
+    function begin(action) {
+        log.clear()
+        status = ""
+        action()
+    }
 
     color: bg
 
     Connections {
+        target: settings
+        function onChanged() { win.rev++ }
+    }
+
+    Connections {
         target: runner
         function onLineAdded(line) { log.append(line) }
-        function onFinished(code) {
+    }
+
+    Connections {
+        target: actions
+        function onDone(code) {
             win.statusOk = code === 0
             win.status = code === 0 ? "Done" : "Finished with exit code " + code
         }
@@ -60,6 +76,45 @@ ApplicationWindow {
     component Card: Rectangle {
         color: win.card
         radius: 14
+    }
+
+    component ActionCard: Card {
+        id: ac
+        property string title
+        property string detail
+        property string button
+        signal triggered()
+        Layout.fillWidth: true
+        implicitHeight: 72
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                Label {
+                    text: ac.title
+                    font.pixelSize: 16
+                    font.weight: Font.DemiBold
+                    color: win.text
+                }
+                Label {
+                    text: ac.detail
+                    font.family: "monospace"
+                    font.pixelSize: 12
+                    color: win.subtext
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
+            PillButton {
+                text: ac.button
+                filled: false
+                enabled: !actions.step
+                onClicked: ac.triggered()
+            }
+        }
     }
 
     header: Item {
@@ -115,9 +170,10 @@ ApplicationWindow {
         ColumnLayout {
             spacing: 16
 
+            // Hero: everything in one click
             Card {
                 Layout.fillWidth: true
-                implicitHeight: 76
+                implicitHeight: 92
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 18
@@ -126,22 +182,17 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         spacing: 2
                         Label {
-                            text: "System update"
-                            font.pixelSize: 17
-                            font.weight: Font.DemiBold
+                            text: actions.step || "Update everything"
+                            font.pixelSize: 20
+                            font.weight: Font.Bold
                             color: win.text
-                        }
-                        Label {
-                            text: settings.get("update_command")
-                            font.family: "monospace"
-                            font.pixelSize: 12
-                            color: win.subtext
                             elide: Text.ElideRight
                             Layout.fillWidth: true
-                            Connections {
-                                target: settings
-                                function onChanged() { parent.text = settings.get("update_command") }
-                            }
+                        }
+                        Label {
+                            text: "System update → AUR"
+                            font.pixelSize: 13
+                            color: win.subtext
                         }
                     }
                     PillButton {
@@ -152,14 +203,29 @@ ApplicationWindow {
                         onClicked: runner.stop()
                     }
                     PillButton {
-                        text: runner.running ? "Running…" : "Update"
-                        enabled: !runner.running
-                        onClicked: {
-                            log.clear()
-                            win.status = ""
-                            actions.update()
-                        }
+                        text: "Update all"
+                        implicitHeight: 48
+                        font.pixelSize: 17
+                        enabled: !actions.step
+                        onClicked: win.begin(actions.updateAll)
                     }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 16
+                ActionCard {
+                    title: "System update"
+                    detail: (win.rev, settings.get("update_command"))
+                    button: "Update"
+                    onTriggered: win.begin(actions.update)
+                }
+                ActionCard {
+                    title: "AUR"
+                    detail: (win.rev, actions.detectedAurHelper() || "no helper found") + " -Sua"
+                    button: "Update"
+                    onTriggered: win.begin(actions.aur)
                 }
             }
 
@@ -296,6 +362,39 @@ ApplicationWindow {
                 color: win.subtext
                 leftPadding: 16
                 Layout.fillWidth: true
+            }
+
+            Label {
+                text: "AUR HELPER"
+                font.pixelSize: 12
+                color: win.subtext
+                leftPadding: 16
+                Layout.topMargin: 16
+            }
+            Card {
+                Layout.fillWidth: true
+                implicitHeight: 56
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    Label {
+                        text: "Helper"
+                        color: win.text
+                        font.pixelSize: 15
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        text: (win.rev, actions.detectedAurHelper()) ? "" : "not installed"
+                        color: win.danger
+                        font.pixelSize: 13
+                    }
+                    ComboBox {
+                        readonly property var keys: ["auto", "paru", "yay"]
+                        model: ["Automatic", "paru", "yay"]
+                        currentIndex: Math.max(0, keys.indexOf(settings.get("aur_helper")))
+                        onActivated: (i) => settings.set("aur_helper", keys[i])
+                    }
+                }
             }
             Item { Layout.fillHeight: true }
         }
