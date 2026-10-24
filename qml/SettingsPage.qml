@@ -51,7 +51,7 @@ ScrollView {
                 }
             }
         }
-        Footnote { text: "You get a notification only when new updates appear. Closing the window keeps Vardr in the tray." }
+        Footnote { text: "You get a notification only when new updates appear. Closing the window keeps Varðr in the tray." }
 
         SectionLabel { text: "UPDATE COMMAND" }
         CommandCard {
@@ -111,7 +111,7 @@ ScrollView {
         }
         Footnote { text: "Uninstalled packages are always removed. Applies to pacman and AUR build caches." }
         Text {
-            text: "Vardr " + Qt.application.version
+            text: "Varðr " + Qt.application.version
             font.pixelSize: 12
             color: Theme.subtext
             Layout.alignment: Qt.AlignHCenter

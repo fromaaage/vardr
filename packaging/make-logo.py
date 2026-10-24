@@ -2,7 +2,7 @@
 """Generate the Varðr icon and wordmark as SVG from Inter Display Black (OFL).
 
 The ð crossbar is overlaid in the accent color. Needs the Inter font installed.
-Usage: python packaging/make-logo.py   (writes icons/vardr.svg, docs/wordmark-*.svg)
+Usage: python packaging/make-logo.py   (writes icons/vardr.svg, icons/wordmark-*.svg)
 """
 import os
 
@@ -90,11 +90,10 @@ def wordmark(color):
 
 def main():
     QGuiApplication([])
-    os.makedirs(os.path.join(ROOT, "docs"), exist_ok=True)
     files = {
         "icons/vardr.svg": icon(),
-        "docs/wordmark-dark.svg": wordmark("#ffffff"),   # for dark backgrounds
-        "docs/wordmark-light.svg": wordmark("#111111"),  # for light backgrounds
+        "icons/wordmark-dark.svg": wordmark("#ffffff"),   # for dark backgrounds
+        "icons/wordmark-light.svg": wordmark("#111111"),  # for light backgrounds
     }
     for name, content in files.items():
         with open(os.path.join(ROOT, name), "w") as fh:

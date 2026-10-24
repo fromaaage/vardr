@@ -10,7 +10,7 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 520
     visible: !startHidden
-    title: "Vardr – System Updates"
+    title: "Varðr – System Updates"
     color: Theme.bg
 
     readonly property var pages: [
@@ -56,12 +56,10 @@ ApplicationWindow {
                         sourceSize: Qt.size(34, 34)
                     }
                     ColumnLayout {
-                        spacing: 0
-                        Text {
-                            text: "Vardr"
-                            font.pixelSize: 22
-                            font.weight: Font.Bold
-                            color: Theme.text
+                        spacing: 2
+                        Image {
+                            source: Theme.dark ? "icons/wordmark-dark.svg" : "icons/wordmark-light.svg"
+                            sourceSize.height: 22
                         }
                         Text {
                             text: "Update guardian"
