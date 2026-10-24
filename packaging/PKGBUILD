@@ -2,7 +2,7 @@
 pkgname=vardr
 pkgver=1.0.0
 pkgrel=1
-pkgdesc="One-click system maintenance for Garuda/Arch: update, AUR, cache, fixes, repositories, update notifications"
+pkgdesc="Update guardian for Arch-based systems: one-click updates, AUR, cache, mirrors, repositories, tray notifications"
 arch=('any')
 url="https://github.com/fromaaage/vardr"
 license=('MIT')
