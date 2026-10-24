@@ -19,6 +19,8 @@ from repos import RepoEditor, mirrors_script
 from runner import Runner
 from settings import Settings
 
+__version__ = "1.0.0"
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_ID = "garuda-pilot"
 AUTOSTART = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
@@ -247,6 +249,7 @@ def main():
     QQuickStyle.setStyle("Basic")
     app = QApplication(sys.argv)
     app.setApplicationName("Garuda Pilot")
+    app.setApplicationVersion(__version__)
     app.setDesktopFileName(APP_ID)
     if other_instance(start_hidden):
         return

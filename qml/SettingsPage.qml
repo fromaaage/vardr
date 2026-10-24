@@ -110,7 +110,14 @@ ScrollView {
             }
         }
         Footnote { text: "Uninstalled packages are always removed. Applies to pacman and AUR build caches." }
-        Item { implicitHeight: 12 }
+        Text {
+            text: "Garuda Pilot " + Qt.application.version
+            font.pixelSize: 12
+            color: Theme.subtext
+            Layout.alignment: Qt.AlignHCenter
+            Layout.topMargin: 24
+            Layout.bottomMargin: 12
+        }
     }
 
     component Footnote: Text {

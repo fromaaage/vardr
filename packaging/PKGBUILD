@@ -1,0 +1,26 @@
+# Maintainer: fromaaage <fromaaage@pm.me>
+pkgname=garuda-pilot
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="One-click system maintenance for Garuda/Arch: update, AUR, cache, fixes, repositories, update notifications"
+arch=('any')
+url="https://github.com/fromaaage/garuda-pilot"
+license=('MIT')
+depends=('python' 'pyside6' 'pacman-contrib' 'polkit')
+optdepends=('paru: AUR updates'
+            'yay: AUR updates'
+            'rate-mirrors: rank mirrors'
+            'garuda-update: default update command')
+makedepends=('git')
+source=("git+$url.git#tag=v$pkgver")
+sha256sums=('SKIP')
+
+package() {
+    cd "$pkgname"
+    install -d "$pkgdir/usr/share/$pkgname"
+    cp -r app.py checker.py repos.py runner.py settings.py Main.qml qml icons "$pkgdir/usr/share/$pkgname/"
+    python -m compileall -q -d "/usr/share/$pkgname" "$pkgdir/usr/share/$pkgname"
+    install -Dm755 packaging/garuda-pilot.sh "$pkgdir/usr/bin/$pkgname"
+    install -Dm644 packaging/garuda-pilot.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
