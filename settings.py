@@ -15,6 +15,11 @@ DEFAULTS = {
     "cache_keep": 2,
     "fix_command": "garuda-health --fix; if command -v limine-update >/dev/null; then limine-update; fi",
     "fix_as_root": True,
+    "check_interval": 24,  # hours, 0 = off
+    "check_aur": True,
+    "autostart": True,
+    "last_check": 0,
+    "notified": [],
 }
 
 

@@ -8,15 +8,21 @@ import subprocess
 import sys
 
 from PySide6.QtCore import QObject, Property, Signal, Slot
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QIcon
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
+from checker import UpdateChecker
 from repos import RepoEditor, mirrors_script
 from runner import Runner
 from settings import Settings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+APP_ID = "garuda-pilot"
+AUTOSTART = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+                         "autostart", f"{APP_ID}.desktop")
 AUR_HELPERS = ("paru", "yay")
 PACMAN_CACHE = "/var/cache/pacman/pkg"
 # Build directories of AUR helpers; built packages land in one dir per package
@@ -193,26 +199,114 @@ class Actions(QObject):
         self._run(["update", "aur", "cache_pacman", "cache_aur"])
 
 
+def launch_command():
+    """Installed: plain command; from source: python + this file."""
+    return APP_ID if shutil.which(APP_ID) else f"{sys.executable} {os.path.join(HERE, 'app.py')}"
+
+
+def sync_autostart(enabled):
+    if enabled:
+        os.makedirs(os.path.dirname(AUTOSTART), exist_ok=True)
+        with open(AUTOSTART, "w") as f:
+            f.write("[Desktop Entry]\nType=Application\nName=Garuda Pilot\n"
+                    f"Exec={launch_command()} --tray\nIcon=system-software-update\n"
+                    "X-GNOME-Autostart-enabled=true\n")
+    elif os.path.exists(AUTOSTART):
+        os.remove(AUTOSTART)
+
+
+def other_instance(start_hidden):
+    """If Garuda Pilot already runs, ask it to show its window and return True."""
+    sock = QLocalSocket()
+    sock.connectToServer(f"{APP_ID}-{os.getuid()}")
+    if not sock.waitForConnected(300):
+        return False
+    if not start_hidden:
+        sock.write(b"show")
+        sock.waitForBytesWritten(300)
+    sock.disconnectFromServer()
+    return True
+
+
 def main():
+    start_hidden = "--tray" in sys.argv
     QQuickStyle.setStyle("Basic")
-    app = QGuiApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setApplicationName("Garuda Pilot")
-    app.setDesktopFileName("garuda-pilot")
+    app.setDesktopFileName(APP_ID)
+    if other_instance(start_hidden):
+        return
+
+    server_name = f"{APP_ID}-{os.getuid()}"
+    QLocalServer.removeServer(server_name)
+    server = QLocalServer()
+    server.listen(server_name)
 
     settings = Settings()
     runner = Runner()
     actions = Actions(runner, settings)
+    checker = UpdateChecker(settings, actions.detectedAurHelper)
+    actions.done.connect(lambda code: checker.check())  # refresh count after any run
+    sync_autostart(settings.get("autostart"))
+    settings.changed.connect(lambda: sync_autostart(settings.get("autostart")))
+
+    tray_ok = QSystemTrayIcon.isSystemTrayAvailable()
+    app.setQuitOnLastWindowClosed(not tray_ok)
 
     engine = QQmlApplicationEngine()
     ctx = engine.rootContext()
     ctx.setContextProperty("settings", settings)
     ctx.setContextProperty("runner", runner)
     ctx.setContextProperty("actions", actions)
+    ctx.setContextProperty("checker", checker)
+    ctx.setContextProperty("trayAvailable", tray_ok)
+    ctx.setContextProperty("startHidden", start_hidden and tray_ok)
     repo_editor = RepoEditor()
     ctx.setContextProperty("repoEditor", repo_editor)
     engine.load(os.path.join(HERE, "Main.qml"))
     if not engine.rootObjects():
         sys.exit(1)
+    win = engine.rootObjects()[0]
+
+    def show_window():
+        win.show()
+        win.raise_()
+        win.requestActivate()
+
+    server.newConnection.connect(lambda: (server.nextPendingConnection().readyRead.connect(show_window)))
+
+    if tray_ok:
+        tray = QSystemTrayIcon(QIcon.fromTheme("update-none"), app)
+        menu = QMenu()
+        menu.addAction("Open", show_window)
+        menu.addAction("Check for updates", checker.check)
+        menu.addAction("Update all", lambda: (show_window(), win.setProperty("currentTab", 0),
+                                              actions.updateAll()))
+        menu.addSeparator()
+        menu.addAction("Quit", app.quit)
+        tray.setContextMenu(menu)
+        tray.activated.connect(
+            lambda reason: show_window() if reason == QSystemTrayIcon.Trigger else None)
+        tray.messageClicked.connect(show_window)
+
+        def refresh_tray():
+            n = checker.count
+            busy = checker.checking or runner.running
+            tray.setIcon(QIcon.fromTheme("update-busy" if busy else
+                                         "update-medium" if n else "update-none"))
+            tray.setToolTip(f"Garuda Pilot – {n} update{'s' if n != 1 else ''} available"
+                            if n else "Garuda Pilot – system is up to date")
+
+        checker.changed.connect(refresh_tray)
+        checker.checkingChanged.connect(refresh_tray)
+        runner.runningChanged.connect(refresh_tray)
+        checker.newUpdates.connect(lambda total, aur, names: tray.showMessage(
+            f"{total} update{'s' if total != 1 else ''} available"
+            + (f" ({aur} AUR)" if aur else ""), names,
+            QIcon.fromTheme("system-software-update"), 10_000))
+        refresh_tray()
+        tray.show()
+
     sys.exit(app.exec())
 
 

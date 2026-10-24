@@ -8,7 +8,7 @@ ApplicationWindow {
     height: 680
     minimumWidth: 780
     minimumHeight: 480
-    visible: true
+    visible: !startHidden
     title: "Garuda Pilot"
 
     readonly property bool dark: Qt.styleHints.colorScheme === Qt.ColorScheme.Dark
@@ -32,6 +32,14 @@ ApplicationWindow {
     }
 
     color: bg
+
+    // With a tray icon, closing only hides the window; checks keep running
+    onClosing: (close) => {
+        if (trayAvailable) {
+            close.accepted = false
+            hide()
+        }
+    }
 
     Connections {
         target: settings
@@ -147,6 +155,72 @@ ApplicationWindow {
         }
     }
 
+    Popup {
+        id: updatesPopup
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(560, win.width - 80)
+        height: Math.min(500, win.height - 80)
+        modal: true
+        padding: 20
+        background: Rectangle { radius: 14; color: win.card }
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 10
+            Label {
+                text: checker.count + (checker.count === 1 ? " update" : " updates")
+                font.pixelSize: 20
+                font.weight: Font.Bold
+                color: win.text
+            }
+            ListView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                model: checker.packages
+                delegate: RowLayout {
+                    required property var modelData
+                    width: ListView.view.width
+                    height: 30
+                    Label {
+                        text: modelData.name
+                        color: win.text
+                        font.pixelSize: 14
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        text: "AUR"
+                        visible: modelData.source === "aur"
+                        color: win.accent
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+                    Label {
+                        text: modelData.old + "  →  " + modelData.new
+                        color: win.subtext
+                        font.family: "monospace"
+                        font.pixelSize: 12
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Item { Layout.fillWidth: true }
+                PillButton { text: "Close"; filled: false; onClicked: updatesPopup.close() }
+                PillButton {
+                    text: "Update all"
+                    enabled: !actions.step
+                    onClicked: {
+                        updatesPopup.close()
+                        tabs.currentIndex = 0
+                        win.begin(actions.updateAll)
+                    }
+                }
+            }
+        }
+    }
+
     header: Item {
         implicitHeight: 64
         RowLayout {
@@ -180,7 +254,7 @@ ApplicationWindow {
             // Hero: everything in one click
             Card {
                 Layout.fillWidth: true
-                implicitHeight: 92
+                implicitHeight: 108
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 18
@@ -200,6 +274,49 @@ ApplicationWindow {
                             text: "System update → AUR → Clean cache"
                             font.pixelSize: 13
                             color: win.subtext
+                        }
+                        RowLayout {
+                            spacing: 8
+                            Label {
+                                text: checker.checking ? "Checking for updates…"
+                                    : checker.error ? checker.error
+                                    : checker.count ? checker.count + (checker.count === 1 ? " update" : " updates")
+                                                      + " available" + (checker.aurCount ? " (" + checker.aurCount + " AUR)" : "")
+                                    : "Up to date" + (checker.lastCheck ? " · checked " + checker.lastCheck : "")
+                                font.pixelSize: 13
+                                font.weight: Font.DemiBold
+                                color: checker.error ? win.danger : checker.count ? win.accent : win.success
+                                elide: Text.ElideRight
+                                Layout.maximumWidth: 360
+                            }
+                            Label {
+                                text: "Show"
+                                visible: checker.count > 0 && !checker.checking
+                                font.pixelSize: 13
+                                color: win.accent
+                                font.underline: showArea.containsMouse
+                                MouseArea {
+                                    id: showArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: updatesPopup.open()
+                                }
+                            }
+                            Label {
+                                text: "Check now"
+                                visible: !checker.checking
+                                font.pixelSize: 13
+                                color: win.accent
+                                font.underline: checkArea.containsMouse
+                                MouseArea {
+                                    id: checkArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: checker.check()
+                                }
+                            }
                         }
                     }
                     PillButton {
@@ -652,6 +769,75 @@ ApplicationWindow {
             ColumnLayout {
                 width: settingsScroll.availableWidth
                 spacing: 8
+                Label {
+                    text: "UPDATE CHECK"
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                }
+                Card {
+                    Layout.fillWidth: true
+                    implicitHeight: checkCol.implicitHeight + 28
+                    ColumnLayout {
+                        id: checkCol
+                        anchors.fill: parent
+                        anchors.margins: 14
+                        spacing: 10
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Check for updates"
+                                color: win.text
+                                font.pixelSize: 15
+                                Layout.fillWidth: true
+                            }
+                            ComboBox {
+                                readonly property var hours: checker.intervals()
+                                model: hours.map(h => h === 0 ? "Off" : h === 1 ? "Every hour"
+                                                    : h === 24 ? "Daily" : "Every " + h + " hours")
+                                currentIndex: Math.max(0, hours.indexOf(settings.get("check_interval")))
+                                Layout.preferredWidth: 180
+                                onActivated: (i) => settings.set("check_interval", hours[i])
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Include AUR packages"
+                                color: win.text
+                                font.pixelSize: 15
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                checked: settings.get("check_aur")
+                                onToggled: settings.set("check_aur", checked)
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Start at login (in tray)"
+                                color: win.text
+                                font.pixelSize: 15
+                                Layout.fillWidth: true
+                            }
+                            Switch {
+                                checked: settings.get("autostart")
+                                onToggled: settings.set("autostart", checked)
+                            }
+                        }
+                    }
+                }
+                Label {
+                    text: "You get a notification only when new updates appear. Closing the window keeps Garuda Pilot in the tray."
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 12
+                    color: win.subtext
+                    leftPadding: 16
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 16
+                }
+
                 Label {
                     text: "UPDATE COMMAND"
                     font.pixelSize: 12
