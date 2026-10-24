@@ -6,7 +6,7 @@ ApplicationWindow {
     id: win
     width: 900
     height: 680
-    minimumWidth: 640
+    minimumWidth: 780
     minimumHeight: 480
     visible: true
     title: "Garuda Pilot"
@@ -190,7 +190,7 @@ ApplicationWindow {
                             Layout.fillWidth: true
                         }
                         Label {
-                            text: "System update → AUR"
+                            text: "System update → AUR → Clean cache"
                             font.pixelSize: 13
                             color: win.subtext
                         }
@@ -226,6 +226,12 @@ ApplicationWindow {
                     detail: (win.rev, actions.detectedAurHelper() || "no helper found") + " -Sua"
                     button: "Update"
                     onTriggered: win.begin(actions.aur)
+                }
+                ActionCard {
+                    title: "Cache"
+                    detail: "keep " + (win.rev, settings.get("cache_keep")) + " versions"
+                    button: "Clean"
+                    onTriggered: win.begin(actions.cleanCache)
                 }
             }
 
@@ -395,6 +401,41 @@ ApplicationWindow {
                         onActivated: (i) => settings.set("aur_helper", keys[i])
                     }
                 }
+            }
+
+            Label {
+                text: "CACHE"
+                font.pixelSize: 12
+                color: win.subtext
+                leftPadding: 16
+                Layout.topMargin: 16
+            }
+            Card {
+                Layout.fillWidth: true
+                implicitHeight: 56
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    Label {
+                        text: "Versions to keep per package"
+                        color: win.text
+                        font.pixelSize: 15
+                        Layout.fillWidth: true
+                    }
+                    ComboBox {
+                        model: [1, 2, 3]
+                        currentIndex: settings.get("cache_keep") - 1
+                        onActivated: (i) => settings.set("cache_keep", i + 1)
+                    }
+                }
+            }
+            Label {
+                text: "Uninstalled packages are always removed. Applies to pacman and AUR build caches."
+                wrapMode: Text.Wrap
+                font.pixelSize: 12
+                color: win.subtext
+                leftPadding: 16
+                Layout.fillWidth: true
             }
             Item { Layout.fillHeight: true }
         }

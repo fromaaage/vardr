@@ -12,6 +12,7 @@ DEFAULTS = {
     "update_command": "garuda-update",
     "update_as_root": True,
     "aur_helper": "auto",
+    "cache_keep": 2,
 }
 
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Garuda Pilot - one-click system maintenance for Garuda/Arch."""
+import glob
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -15,6 +17,9 @@ from settings import Settings
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 AUR_HELPERS = ("paru", "yay")
+PACMAN_CACHE = "/var/cache/pacman/pkg"
+# Build directories of AUR helpers; built packages land in one dir per package
+AUR_CACHE_GLOBS = ("~/.cache/paru/clone/*/", "~/.cache/yay/*/")
 
 
 def aur_helper(choice):
@@ -80,7 +85,33 @@ class Actions(QObject):
         return self.runner.start(f"{helper} -Sua --sudo pkexec",
                                  env={"PARU_PAGER": "cat", "PAGER": "cat"})
 
-    STEPS = {"update": ("System update", "_update"), "aur": ("AUR update", "_aur")}
+    def _keep(self):
+        return max(1, min(3, int(self.settings.get("cache_keep"))))
+
+    def _cache_pacman(self):
+        # Keep N versions of installed packages, drop uninstalled ones entirely
+        k = self._keep()
+        return self.runner.start(
+            f"paccache -rk{k}; paccache -ruk0; echo; du -sh {PACMAN_CACHE}", as_root=True)
+
+    def _cache_aur(self):
+        dirs = [d for g in AUR_CACHE_GLOBS for d in glob.glob(os.path.expanduser(g))]
+        if not dirs:
+            self.runner.lineAdded.emit("No AUR build cache found, skipped.")
+            return False
+        k = self._keep()
+        cdirs = " ".join("-c " + shlex.quote(d) for d in dirs)
+        roots = " ".join(shlex.quote(os.path.expanduser(r)) for r in ("~/.cache/paru", "~/.cache/yay")
+                         if os.path.isdir(os.path.expanduser(r)))
+        return self.runner.start(
+            f"paccache -rk{k} {cdirs}; paccache -ruk0 {cdirs}; echo; du -sh {roots}")
+
+    STEPS = {
+        "update": ("System update", "_update"),
+        "aur": ("AUR update", "_aur"),
+        "cache_pacman": ("Clean pacman cache", "_cache_pacman"),
+        "cache_aur": ("Clean AUR cache", "_cache_aur"),
+    }
 
     def _run(self, keys):
         if self.runner.running:
@@ -118,8 +149,12 @@ class Actions(QObject):
         self._run(["aur"])
 
     @Slot()
+    def cleanCache(self):
+        self._run(["cache_pacman", "cache_aur"])
+
+    @Slot()
     def updateAll(self):
-        self._run(["update", "aur"])
+        self._run(["update", "aur", "cache_pacman", "cache_aur"])
 
 
 def main():
