@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import QMetaObject, QObject, Property, Signal, Slot
 from PySide6.QtGui import QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtQml import QQmlApplicationEngine
@@ -57,6 +57,7 @@ class Actions(QObject):
         self._index = 0
         self._total = 0
         self._active = False
+        self._plan = []
         self._repo_script = ""
         runner.finished.connect(self._next)
 
@@ -66,7 +67,19 @@ class Actions(QObject):
         prefix = f"Step {self._index}/{self._total} · " if self._total > 1 else ""
         return prefix + self._step
 
+    def _get_index(self):
+        return self._index if self._step else 0
+
+    def _get_plan(self):
+        return self._plan
+
+    def _get_total(self):
+        return self._total if self._step else 0
+
     step = Property(str, _get_step, notify=stepChanged)
+    stepIndex = Property(int, _get_index, notify=stepChanged)
+    plan = Property("QVariantList", _get_plan, notify=stepChanged)
+    stepTotal = Property(int, _get_total, notify=stepChanged)
 
     @Slot(result=str)
     def detectedAurHelper(self):
@@ -76,17 +89,17 @@ class Actions(QObject):
     def _update(self):
         cmd = self.settings.get("update_command").strip()
         if not cmd:
-            self.runner.lineAdded.emit("No update command set, skipped.")
+            self.runner.note("No update command set, skipped.")
             return False
         return self.runner.start(cmd, as_root=bool(self.settings.get("update_as_root")))
 
     def _aur(self):
         helper = self.detectedAurHelper()
         if not helper:
-            self.runner.lineAdded.emit("No AUR helper (paru/yay) found, skipped.")
+            self.runner.note("No AUR helper (paru/yay) found, skipped.")
             return False
         if not has_foreign_packages():
-            self.runner.lineAdded.emit("No AUR packages installed, skipped.")
+            self.runner.note("No AUR packages installed, skipped.")
             return False
         # Runs as user; the helper asks for root via pkexec only when installing.
         # cat as pager: PKGBUILD review is printed into the log instead of opening less.
@@ -105,7 +118,7 @@ class Actions(QObject):
     def _cache_aur(self):
         dirs = [d for g in AUR_CACHE_GLOBS for d in glob.glob(os.path.expanduser(g))]
         if not dirs:
-            self.runner.lineAdded.emit("No AUR build cache found, skipped.")
+            self.runner.note("No AUR build cache found, skipped.")
             return False
         k = self._keep()
         cdirs = " ".join("-c " + shlex.quote(d) for d in dirs)
@@ -118,7 +131,7 @@ class Actions(QObject):
     def _fix(self):
         cmd = self.settings.get("fix_command").strip()
         if not cmd:
-            self.runner.lineAdded.emit("No fix command set, skipped.")
+            self.runner.note("No fix command set, skipped.")
             return False
         return self.runner.start(cmd, as_root=bool(self.settings.get("fix_as_root")))
 
@@ -127,7 +140,7 @@ class Actions(QObject):
 
     def _mirrors(self):
         if not shutil.which("rate-mirrors"):
-            self.runner.lineAdded.emit("rate-mirrors is not installed, skipped.")
+            self.runner.note("rate-mirrors is not installed, skipped.")
             return False
         return self.runner.start(mirrors_script(), as_root=True, display="Rank mirrors (rate-mirrors)")
 
@@ -145,6 +158,7 @@ class Actions(QObject):
         if self.runner.running:
             return
         self._queue = list(keys)
+        self._plan = [self.STEPS[k][0] for k in keys]
         self._total = len(keys)
         self._index = 0
         self._active = True
@@ -280,8 +294,8 @@ def main():
         menu = QMenu()
         menu.addAction("Open", show_window)
         menu.addAction("Check for updates", checker.check)
-        menu.addAction("Update all", lambda: (show_window(), win.setProperty("currentTab", 0),
-                                              actions.updateAll()))
+        menu.addAction("Update all", lambda: (show_window(),
+                                              QMetaObject.invokeMethod(win, "startUpdateAll")))
         menu.addSeparator()
         menu.addAction("Quit", app.quit)
         tray.setContextMenu(menu)

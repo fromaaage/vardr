@@ -1,0 +1,17 @@
+singleton Theme 1.0 Theme.qml
+PillButton 1.0 PillButton.qml
+Card 1.0 Card.qml
+IconTile 1.0 IconTile.qml
+ActionCard 1.0 ActionCard.qml
+PilotSwitch 1.0 PilotSwitch.qml
+PilotCombo 1.0 PilotCombo.qml
+PilotField 1.0 PilotField.qml
+Segmented 1.0 Segmented.qml
+SectionLabel 1.0 SectionLabel.qml
+SettingRow 1.0 SettingRow.qml
+LogView 1.0 LogView.qml
+MaintenancePage 1.0 MaintenancePage.qml
+ReposPage 1.0 ReposPage.qml
+SettingsPage 1.0 SettingsPage.qml
+LinkText 1.0 LinkText.qml
+Separator 1.0 Separator.qml

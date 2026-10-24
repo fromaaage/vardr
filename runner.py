@@ -1,9 +1,11 @@
 """Runs shell commands in a pseudo-terminal and streams their output to QML."""
+import codecs
 import fcntl
 import html
 import os
 import pty
 import re
+import struct
 import subprocess
 import termios
 
@@ -13,6 +15,8 @@ CSI = re.compile(r"\x1b\[([0-9;?]*)([A-Za-z])")
 OSC = re.compile(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()][0-9A-Za-z]|\x0f|\x0e")
 # Unfinished line that waits for an answer: "[Y/n]", "? ", "): ", "==> "
 PROMPT = re.compile(r"(\[[yYnN]/[yYnN]\]|\?|:|==>)\s*$")
+
+COLS, ROWS = 110, 40
 
 COLORS = {
     30: "#8e8e93", 31: "#ff453a", 32: "#30d158", 33: "#ffd60a",
@@ -64,12 +68,93 @@ def strip_ansi(text):
     return CSI.sub("", OSC.sub("", text))
 
 
-class Runner(QObject):
-    """One command at a time. Lines go to lineAdded, the unfinished line
-    (progress bars, questions) to currentLine."""
+TOKEN = re.compile(r"(\x1b\[[0-9;?]*[A-Za-z]|\r|\n)")
+PARTIAL = re.compile(r"\x1b(\[[0-9;?]*)?$")
+HTML_MARK = "\x00"  # rows starting with this are ready-made HTML (notes)
 
-    lineAdded = Signal(str)
-    currentLineChanged = Signal()
+
+class Screen:
+    """Minimal terminal: rows that can be rewritten via \\r and cursor moves
+    (pacman's parallel downloads jump up and down with ESC[nF / ESC[nE).
+    Text written at column 0 replaces the row, later text is appended."""
+
+    def __init__(self):
+        self.rows = []
+        self.row = 0
+        self.col0 = True
+        self.dirty = set()
+
+    def newline(self):
+        """Start a fresh row below everything written so far."""
+        if self.rows and self.rows[-1] == "":
+            self.row = len(self.rows) - 1
+        else:
+            self.row = len(self.rows)
+        self.col0 = True
+
+    def add_line(self, text):
+        self.newline()
+        self._write(text)
+        self.row += 1
+        self.col0 = True
+
+    def feed(self, text):
+        for tok in TOKEN.split(text):
+            if not tok:
+                continue
+            if tok == "\r":
+                self.col0 = True
+            elif tok == "\n":
+                self.row += 1
+                self.col0 = True
+            elif tok.startswith("\x1b["):
+                n = int(tok[2:-1]) if tok[2:-1].isdigit() else 1
+                cmd = tok[-1]
+                if cmd == "m":
+                    self._write(tok)
+                elif cmd in "FA":
+                    self.row = max(0, self.row - n)
+                    self.col0 = self.col0 or cmd == "F"
+                elif cmd in "EB":
+                    self.row += n
+                    self.col0 = self.col0 or cmd == "E"
+                elif cmd == "K" and self.col0:
+                    self._set("")
+            else:
+                self._write(tok)
+
+    def _write(self, text):
+        if self.col0:
+            self._set(text)
+            self.col0 = False
+        else:
+            self._set(self._get() + text)
+
+    def _get(self):
+        return self.rows[self.row] if self.row < len(self.rows) else ""
+
+    def _set(self, text):
+        while len(self.rows) <= self.row:
+            self.rows.append("")
+            self.dirty.add(len(self.rows) - 1)
+        self.rows[self.row] = text
+        self.dirty.add(self.row)
+
+    def current(self):
+        """Unfinished text at the cursor (for prompt detection)."""
+        return "" if self.col0 else self._get()
+
+    def take_dirty(self):
+        d, self.dirty = sorted(self.dirty), set()
+        return d
+
+
+class Runner(QObject):
+    """One command at a time. Output lives in a Screen; changed rows are
+    sent as rowChanged(index, html) so progress bars update in place."""
+
+    rowChanged = Signal(int, str)
+    cleared = Signal()
     promptChanged = Signal()
     runningChanged = Signal()
     finished = Signal(int)
@@ -80,22 +165,49 @@ class Runner(QObject):
         self._fd = None
         self._notifier = None
         self._buf = ""
-        self._current = ""
+        self._decoder = codecs.getincrementaldecoder("utf-8")("replace")
+        self._screen = Screen()
         self._prompt = ""
+        self._cols = COLS
 
     # --- properties -----------------------------------------------------
-    def _get_current(self):
-        return ansi_to_html(self._current)
-
     def _get_prompt(self):
         return self._prompt
 
     def _get_running(self):
         return self._proc is not None
 
-    currentLine = Property(str, _get_current, notify=currentLineChanged)
     prompt = Property(str, _get_prompt, notify=promptChanged)
     running = Property(bool, _get_running, notify=runningChanged)
+
+    @Slot(int)
+    def setColumns(self, cols):
+        """Terminal width follows the log view; resizes a running process too."""
+        self._cols = max(40, min(300, cols))
+        if self._fd is not None:
+            fcntl.ioctl(self._fd, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, self._cols, 0, 0))
+
+    # --- log ------------------------------------------------------------
+    @Slot()
+    def clear(self):
+        self._screen = Screen()
+        self.cleared.emit()
+
+    def note(self, text, color=None):
+        """Add an informational line (not from the process)."""
+        esc = html.escape(text)
+        self._screen.add_line(HTML_MARK + (f'<span style="color:{color};">{esc}</span>' if color else esc))
+        self._flush()
+
+    @Slot(result=str)
+    def plainText(self):
+        return "\n".join(html.unescape(re.sub(r"<[^>]+>", "", strip_ansi(r.lstrip(HTML_MARK))))
+                         for r in self._screen.rows)
+
+    def _flush(self):
+        for i in self._screen.take_dirty():
+            row = self._screen.rows[i]
+            self.rowChanged.emit(i, row[1:] if row.startswith(HTML_MARK) else ansi_to_html(row))
 
     # --- control --------------------------------------------------------
     def start(self, command, as_root=False, env=None, display=None):
@@ -107,9 +219,10 @@ class Runner(QObject):
         if as_root:
             argv = ["pkexec", "env", "TERM=xterm-256color"] + argv
         master, slave = pty.openpty()
-        full_env = dict(os.environ, TERM="xterm-256color", COLUMNS="110", LINES="40")
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, self._cols, 0, 0))
+        full_env = dict(os.environ, TERM="xterm-256color", COLUMNS=str(self._cols), LINES=str(ROWS))
         full_env.update(env or {})
-        self.lineAdded.emit(f'<span style="color:#8e8e93;">$ {html.escape(display or command)}</span>')
+        self.note("$ " + (display or command), "#8e8e93")
         try:
             self._proc = subprocess.Popen(
                 argv, stdin=slave, stdout=slave, stderr=slave,
@@ -118,11 +231,12 @@ class Runner(QObject):
         except OSError as e:
             os.close(master)
             os.close(slave)
-            self.lineAdded.emit(f'<span style="color:#ff453a;">{html.escape(str(e))}</span>')
+            self.note(str(e), "#ff453a")
             self.finished.emit(127)
             return False
         os.close(slave)
         self._fd = master
+        self._screen.newline()
         self._notifier = QSocketNotifier(master, QSocketNotifier.Read, self)
         self._notifier.activated.connect(self._read)
         self.runningChanged.emit()
@@ -149,16 +263,16 @@ class Runner(QObject):
         if not data:
             self._close()
             return
-        self._buf += data.decode("utf-8", "replace")
-        *lines, self._buf = self._buf.split("\n")
-        for line in lines:
-            line = line.rstrip("\r")
-            if "\r" in line:  # progress bar: keep only the last redraw
-                line = line.rsplit("\r", 1)[-1]
-            self.lineAdded.emit(ansi_to_html(line))
-        self._current = self._buf.rsplit("\r", 1)[-1]
-        self.currentLineChanged.emit()
-        plain = strip_ansi(self._current).strip()
+        self.feed(self._decoder.decode(data))
+
+    def feed(self, text):
+        """Process terminal output (also used by tests)."""
+        text = OSC.sub("", self._buf + text)
+        m = PARTIAL.search(text)  # escape sequence cut off at chunk end
+        self._buf = text[m.start():] if m else ""
+        self._screen.feed(text[:m.start()] if m else text)
+        self._flush()
+        plain = strip_ansi(self._screen.current()).strip()
         self._set_prompt(plain if plain and PROMPT.search(plain) else "")
 
     def _set_prompt(self, text):
@@ -173,10 +287,7 @@ class Runner(QObject):
         if self._fd is not None:
             os.close(self._fd)
             self._fd = None
-        if self._current:
-            self.lineAdded.emit(ansi_to_html(self._current))
-        self._buf = self._current = ""
-        self.currentLineChanged.emit()
+        self._buf = ""
         self._set_prompt("")
         code = self._proc.wait() if self._proc else 0
         self._proc = None
