@@ -69,6 +69,23 @@ ScrollView {
             resetLabel: settings.defaultValue("fix_command") ? "Reset to default" : "Clear"
         }
 
+        Card {
+            Layout.fillWidth: true
+            Layout.topMargin: 8
+            implicitHeight: 56
+            visible: (Theme.rev, settings.get("fix_command")).trim().length > 0
+            SettingRow {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                label: "Run as last step of Update all"
+                PilotSwitch {
+                    checked: settings.get("fix_in_update_all")
+                    onToggled: settings.set("fix_in_update_all", checked)
+                }
+            }
+        }
+
         SectionLabel { text: "AUR HELPER" }
         Card {
             Layout.fillWidth: true

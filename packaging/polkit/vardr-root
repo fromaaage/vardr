@@ -1,0 +1,12 @@
+#!/bin/bash
+# Root helper for varðr, started through pkexec (polkit action org.vardr.run).
+#   vardr-root --sh "<shell command>"   run a command line (maintenance steps)
+#   vardr-root <program> [args...]      run a program (used by vardr-sudo for paru/yay)
+export TERM=xterm-256color
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/bin
+case "$1" in
+    --sh) exec /bin/bash -c "$2" ;;
+    -*)   exit 0 ;;  # sudo-style flags like -v from AUR helpers: nothing to do
+    "")   echo "usage: vardr-root --sh CMD | PROGRAM [ARGS...]" >&2; exit 2 ;;
+    *)    exec "$@" ;;
+esac

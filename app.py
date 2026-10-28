@@ -17,7 +17,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from checker import UpdateChecker
 from repos import RepoEditor, mirrors_script
-from runner import Runner
+from runner import SUDO_WRAPPER, Runner, helper_installed
 from settings import Settings
 
 __version__ = "1.0.0"
@@ -107,7 +107,8 @@ class Actions(QObject):
             return False
         # Runs as user; the helper asks for root via pkexec only when installing.
         # cat as pager: PKGBUILD review is printed into the log instead of opening less.
-        return self.runner.start(f"{helper} -Sua --sudo pkexec",
+        sudo = SUDO_WRAPPER if helper_installed() else "pkexec"
+        return self.runner.start(f"{helper} -Sua --sudo {sudo}",
                                  env={"PARU_PAGER": "cat", "PAGER": "cat"})
 
     def _keep(self):
@@ -214,7 +215,10 @@ class Actions(QObject):
 
     @Slot()
     def updateAll(self):
-        self._run(["update", "aur", "cache_pacman", "cache_aur"])
+        steps = ["update", "aur", "cache_pacman", "cache_aur"]
+        if self.settings.get("fix_in_update_all") and self.settings.get("fix_command").strip():
+            steps.append("fix")
+        self._run(steps)
 
 
 APP_ICON = os.path.join(HERE, "icons", "vardr.svg")

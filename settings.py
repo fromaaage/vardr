@@ -26,6 +26,7 @@ DEFAULTS = {
     "aur_helper": "auto",
     "cache_keep": 2,
     "fix_as_root": True,
+    "fix_in_update_all": False,
     "check_interval": 24,  # hours, 0 = off
     "check_aur": True,
     "autostart": True,

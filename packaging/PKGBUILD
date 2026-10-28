@@ -23,5 +23,8 @@ package() {
     install -Dm755 packaging/vardr.sh "$pkgdir/usr/bin/$pkgname"
     install -Dm644 packaging/vardr.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
     install -Dm644 icons/vardr.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
+    install -Dm755 packaging/polkit/vardr-root "$pkgdir/usr/lib/$pkgname/vardr-root"
+    install -Dm755 packaging/polkit/vardr-sudo "$pkgdir/usr/lib/$pkgname/vardr-sudo"
+    install -Dm644 packaging/polkit/org.vardr.policy "$pkgdir/usr/share/polkit-1/actions/org.vardr.policy"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

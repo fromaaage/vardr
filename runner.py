@@ -17,6 +17,14 @@ OSC = re.compile(r"\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()][0-9A-Za-z]|\x0f|\x0e
 PROMPT = re.compile(r"(\[[yYnN]/[yYnN]\]|\?|:|==>)\s*$")
 
 COLS, ROWS = 110, 40
+# Installed root helper with a polkit rule that remembers the password for a
+# few minutes (packaging/polkit). Without it every root step asks again.
+ROOT_HELPER = "/usr/lib/vardr/vardr-root"
+SUDO_WRAPPER = "/usr/lib/vardr/vardr-sudo"
+
+
+def helper_installed():
+    return os.access(ROOT_HELPER, os.X_OK)
 
 COLORS = {
     30: "#8e8e93", 31: "#ff453a", 32: "#30d158", 33: "#ffd60a",
@@ -217,7 +225,8 @@ class Runner(QObject):
             return False
         argv = ["/bin/bash", "-c", command]
         if as_root:
-            argv = ["pkexec", "env", "TERM=xterm-256color"] + argv
+            argv = (["pkexec", ROOT_HELPER, "--sh", command] if helper_installed()
+                    else ["pkexec", "env", "TERM=xterm-256color"] + argv)
         master, slave = pty.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", ROWS, self._cols, 0, 0))
         full_env = dict(os.environ, TERM="xterm-256color", COLUMNS=str(self._cols), LINES=str(ROWS))

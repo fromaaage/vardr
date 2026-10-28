@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>varðr</vendor>
+  <vendor_url>https://github.com/fromaaage/vardr</vendor_url>
+  <action id="org.vardr.run">
+    <description>Run system maintenance with varðr</description>
+    <message>varðr needs administrator rights for system maintenance</message>
+    <icon_name>vardr</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <!-- keep: the password is remembered for a few minutes -->
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/vardr/vardr-root</annotate>
+  </action>
+</policyconfig>
