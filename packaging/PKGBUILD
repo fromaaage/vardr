@@ -1,6 +1,6 @@
 # Maintainer: fromaaage <fromaaage@pm.me>
 pkgname=vardr
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Update guardian for Arch-based systems: one-click updates, AUR, cache, mirrors, repositories, tray notifications"
 arch=('any')

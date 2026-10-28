@@ -20,7 +20,7 @@ from repos import RepoEditor, mirrors_script
 from runner import SUDO_WRAPPER, Runner, helper_installed
 from settings import Settings
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_ID = "vardr"
