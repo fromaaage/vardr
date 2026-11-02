@@ -23,6 +23,7 @@ One-click updates, AUR, cache cleaning, mirrors and repositories – with a tray
 - **Repository editor** for `/etc/pacman.conf`: enable/disable, reorder by drag, SigLevel, add with key import, remove, raw text mode; validated with `pacman-conf`, timestamped backup, followed by a full update (no partial `-Sy`)
 - **Mirror ranking** with `rate-mirrors` for Arch, chaotic-aur and CachyOS (v3/v4 lists derived)
 - **Update check** in the background (`checkupdates` + AUR), interval off/1/6/12/24 h, tray badge, notification only for new updates
+- **Config file check** after every run and update check: finds `.pacnew`/`.pacsave` files (`pacdiff -o` + `/etc`) and sorts them. *Safe*: only comments differ, or your file still matches the previous package default (from the pacman cache) → “Use new” with backup. *Your own changes* → labelled diff (current vs. new, plus your changes vs. the old default), never replaced automatically. Also: delete, open in `meld`
 - Live terminal output with in-place progress bars and Yes/No buttons for prompts
 - Light/dark mode following the desktop, with manual override
 
@@ -33,7 +34,7 @@ Works on Arch, Garuda, CachyOS, EndeavourOS and other Arch-based distributions.
 ## Requirements
 
 `python`, `pyside6`, `pacman-contrib`, `polkit` (plus a running polkit agent).
-Optional: `paru` or `yay`, `rate-mirrors`, `garuda-update`.
+Optional: `paru` or `yay`, `rate-mirrors`, `garuda-update`, `meld`.
 
 ## Install
 
@@ -50,7 +51,7 @@ Or run from source: `python app.py` (`--tray` starts hidden in the tray).
 - Root steps run through a small helper (`/usr/lib/vardr/vardr-root`) with a polkit rule that remembers the password for a few minutes, so a full run asks once. From source, install it with `sudo packaging/polkit/install.sh`; without it, every root step asks separately.
 - With a system tray, closing the window keeps varðr running. "Start at login" writes `~/.config/autostart/vardr.desktop`.
 - Settings: `~/.config/vardr/settings.json`.
-- Backups: `/etc/pacman.conf.bak-<timestamp>`, mirror lists as `<file>.vardr.bak`.
+- Backups: `/etc/pacman.conf.bak-<timestamp>`, mirror lists as `<file>.vardr.bak`, replaced config files as `<file>.vardr-<date>.bak`.
 - Logo: `packaging/make-logo.py` (Inter Display Black, SIL Open Font License).
 
 *Not affiliated with Arch Linux or the Garuda Linux project.*

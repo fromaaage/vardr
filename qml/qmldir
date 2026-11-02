@@ -15,3 +15,4 @@ ReposPage 1.0 ReposPage.qml
 SettingsPage 1.0 SettingsPage.qml
 LinkText 1.0 LinkText.qml
 Separator 1.0 Separator.qml
+PacFilesPopup 1.0 PacFilesPopup.qml

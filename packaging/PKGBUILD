@@ -1,6 +1,6 @@
 # Maintainer: fromaaage <fromaaage@pm.me>
 pkgname=vardr
-pkgver=1.1.0
+pkgver=1.2.0
 pkgrel=1
 pkgdesc="Update guardian for Arch-based systems: one-click updates, AUR, cache, mirrors, repositories, tray notifications"
 arch=('any')
@@ -18,7 +18,7 @@ sha256sums=('SKIP')
 package() {
     cd "$pkgname"
     install -d "$pkgdir/usr/share/$pkgname"
-    cp -r app.py checker.py repos.py runner.py settings.py Main.qml qml icons "$pkgdir/usr/share/$pkgname/"
+    cp -r app.py checker.py pacfiles.py repos.py runner.py settings.py Main.qml qml icons "$pkgdir/usr/share/$pkgname/"
     python -m compileall -q -d "/usr/share/$pkgname" "$pkgdir/usr/share/$pkgname"
     install -Dm755 packaging/vardr.sh "$pkgdir/usr/bin/$pkgname"
     install -Dm644 packaging/vardr.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"

@@ -147,6 +147,45 @@ ColumnLayout {
         }
     }
 
+    // Hint for .pacnew/.pacsave files after updates
+    Card {
+        Layout.fillWidth: true
+        visible: pacfiles.count > 0
+        implicitHeight: 72
+        border.color: Theme.orange
+        border.width: 1.5
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 12
+            IconTile { icon: "gear"; color: Theme.orange; size: 36 }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                Text {
+                    text: Theme.plural(pacfiles.count, "config file") + " to review (.pacnew/.pacsave)"
+                    font.pixelSize: 16
+                    font.weight: Font.DemiBold
+                    color: Theme.text
+                }
+                Text {
+                    text: (pacfiles.safeCount ? pacfiles.safeCount + " safe to take over" : "None can be taken over automatically")
+                    font.pixelSize: 12
+                    color: Theme.subtext
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
+            PillButton {
+                text: "Review"
+                filled: false
+                onClicked: pacPopup.open()
+            }
+        }
+    }
+
+    PacFilesPopup { id: pacPopup }
+
     LogView {
         Layout.fillWidth: true
         Layout.fillHeight: true

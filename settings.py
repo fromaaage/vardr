@@ -32,6 +32,7 @@ DEFAULTS = {
     "autostart": True,
     "last_check": 0,
     "notified": [],
+    "pac_notified": [],  # .pacnew/.pacsave files already notified about
     "appearance": "",          # "", "dark" or "light" (choice made in the app)
     "appearance_desktop": "",  # desktop mode when the app last ran
 }

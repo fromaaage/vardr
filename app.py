@@ -16,11 +16,12 @@ from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from checker import UpdateChecker
+from pacfiles import PacFiles, adopt_script, delete_script
 from repos import RepoEditor, mirrors_script
 from runner import SUDO_WRAPPER, Runner, helper_installed
 from settings import Settings
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP_ID = "vardr"
@@ -52,10 +53,11 @@ class Actions(QObject):
     stepChanged = Signal()
     done = Signal(int)
 
-    def __init__(self, runner, settings, parent=None):
+    def __init__(self, runner, settings, pacfiles, parent=None):
         super().__init__(parent)
         self.runner = runner
         self.settings = settings
+        self.pacfiles = pacfiles
         self._queue = []
         self._step = ""
         self._index = 0
@@ -63,6 +65,7 @@ class Actions(QObject):
         self._active = False
         self._plan = []
         self._repo_script = ""
+        self._pac_script = ""
         runner.finished.connect(self._next)
 
     def _get_step(self):
@@ -149,6 +152,9 @@ class Actions(QObject):
             return False
         return self.runner.start(mirrors_script(), as_root=True, display="Rank mirrors (rate-mirrors)")
 
+    def _pac(self):
+        return self.runner.start(self._pac_script, as_root=True, display=self._pac_display)
+
     STEPS = {
         "update": ("System update", "_update"),
         "aur": ("AUR update", "_aur"),
@@ -157,6 +163,7 @@ class Actions(QObject):
         "fix": ("System fix", "_fix"),
         "repos_save": ("Save repositories", "_repos_save"),
         "mirrors": ("Rank mirrors", "_mirrors"),
+        "pac": ("Config files", "_pac"),
     }
 
     def _run(self, keys):
@@ -212,6 +219,27 @@ class Actions(QObject):
     @Slot()
     def cleanCache(self):
         self._run(["cache_pacman", "cache_aur"])
+
+    def _run_pac(self, script, display):
+        self._pac_script, self._pac_display = script, display
+        self._run(["pac"])
+
+    @Slot("QVariantList")
+    def pacAdopt(self, paths):
+        """Replace the current files with their .pacnew, keeping a backup."""
+        paths = self.pacfiles.known(paths, kinds={"pacnew"})
+        if paths:
+            self._run_pac(adopt_script(paths), f"Use new version ({len(paths)} file{'s' if len(paths) != 1 else ''})")
+
+    @Slot()
+    def pacAdoptSafe(self):
+        self.pacAdopt(self.pacfiles.safe_paths())
+
+    @Slot("QVariantList")
+    def pacDelete(self, paths):
+        paths = self.pacfiles.known(paths)
+        if paths:
+            self._run_pac(delete_script(paths), "Delete " + ", ".join(paths))
 
     @Slot()
     def updateAll(self):
@@ -298,9 +326,11 @@ def main():
     migrate_old_name()
     settings = Settings()
     runner = Runner()
-    actions = Actions(runner, settings)
+    pacfiles = PacFiles(settings)
+    actions = Actions(runner, settings, pacfiles)
     checker = UpdateChecker(settings, actions.detectedAurHelper)
     actions.done.connect(lambda code: checker.check())  # refresh count after any run
+    checker.changed.connect(pacfiles.scan)  # new .pacnew files after updates/checks
     sync_autostart(settings.get("autostart"))
     settings.changed.connect(lambda: sync_autostart(settings.get("autostart")))
 
@@ -313,6 +343,7 @@ def main():
     ctx.setContextProperty("runner", runner)
     ctx.setContextProperty("actions", actions)
     ctx.setContextProperty("checker", checker)
+    ctx.setContextProperty("pacfiles", pacfiles)
     ctx.setContextProperty("trayAvailable", tray_ok)
     ctx.setContextProperty("startHidden", start_hidden and tray_ok)
     repo_editor = RepoEditor()
@@ -358,9 +389,12 @@ def main():
             f"{total} update{'s' if total != 1 else ''} available"
             + (f" ({aur} AUR)" if aur else ""), names,
             QIcon(APP_ICON), 10_000))
+        pacfiles.newFiles.connect(lambda n, names: tray.showMessage(
+            f"{n} config file{'s' if n != 1 else ''} to review", names, QIcon(APP_ICON), 10_000))
         refresh_tray()
         tray.show()
 
+    pacfiles.scan()  # after the tray is up, so the first notification shows
     sys.exit(app.exec())
 
 
